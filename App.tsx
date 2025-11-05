@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Button, FlatList, StyleSheet, TextInput, Alert, Image } from 'react-native';
+import { View, Text, Button, FlatList, StyleSheet, TextInput, Alert, Image, TouchableOpacity } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { initDatabase } from './db';
 import * as SQLite from 'expo-sqlite';
 
@@ -259,16 +260,19 @@ async function deleteItem(itemId: number) {
               style={{ width: 100, height: 100, borderRadius: 8 }}
             />
 
-            <Button
-                title="Delete"
-                color="red"
-                onPress={() =>
-                  Alert.alert('Confirm', 'Delete this item?', [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Delete', style: 'destructive', onPress: () => deleteItem(item.id) },
-                  ])
-                }
-              />
+            {/* Delete Item */}
+            <TouchableOpacity
+              onPress={() =>
+                Alert.alert('Confirm', 'Delete this item?', [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Delete', style: 'destructive', onPress: () => deleteItem(item.id) },
+                ])
+              }
+              style={{ alignSelf: 'flex-start', padding: 6 }}
+            >
+              <MaterialIcons name="delete" size={26} color="red" />
+            </TouchableOpacity>
+
           </View>
         )}
         ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
