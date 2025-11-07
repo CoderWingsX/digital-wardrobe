@@ -1,9 +1,10 @@
 import * as SQLite from 'expo-sqlite';
 
-let db: SQLite.SQLiteDatabase;
+let db: SQLite.SQLiteDatabase | null = null;
 
-// Initialize and return DB
 export async function initDatabase() {
+  if (db) return db;
+
   db = await SQLite.openDatabaseAsync('wardrobe.db');
 
   await db.execAsync(`
@@ -69,7 +70,168 @@ export async function initDatabase() {
   return db;
 }
 
+// Get DB 
 export function getDB() {
+  if (!db) console.log("Uhmmmm....")
   if (!db) throw new Error('DB not initialized. Call initDatabase() first.');
   return db;
+}
+
+// Load items
+export async function loadItems() {
+  const database = getDB();
+  const rows = await database.getAllAsync(`
+    SELECT i.id, i.name, i.category, i.description,
+           m.attributes AS metadata,
+           GROUP_CONCAT(t.name, ',') AS tags,
+           GROUP_CONCAT(ii.image_path, ',') AS images
+    FROM items i
+    LEFT JOIN metadata m ON m.item_remote_id = i.id
+    LEFT JOIN item_tags it ON it.item_remote_id = i.id
+    LEFT JOIN tags t ON t.id = it.tag_remote_id
+    LEFT JOIN item_images ii ON ii.metadata_remote_id = m.id
+    WHERE i.deleted = 0
+    GROUP BY i.id
+    ORDER BY i.id DESC
+  `);
+
+  return rows.map((r: any) => {
+    let metaObj = {};
+    try {
+      metaObj = r.metadata ? JSON.parse(r.metadata) : {};
+    } catch {
+      metaObj = {};
+    }
+
+    return {
+      ...r,
+      metadata: metaObj,
+      tags: r.tags ? r.tags.split(',') : [],
+      images: r.images ? r.images.split(',') : [],
+    };
+  });
+}
+
+// Add item
+export async function addItem(data: {
+  name: string;
+  description: string;
+  category: string;
+  metadata?: string;
+  tags?: string;
+}) {
+  const database = getDB();
+  const now = Date.now();
+
+  // Insert item
+  const result = await database.runAsync(
+    `INSERT INTO items (name, description, category, created_at, updated_at, pending_sync)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [data.name, data.description, data.category, now, now, 1]
+  );
+
+  const itemId = result.lastInsertRowId;
+
+  // Insert metadata
+  let metaId: number | null = null;
+  if (data.metadata) {
+    try {
+      const metaJSON = JSON.stringify(
+        Object.fromEntries(
+          data.metadata.split(',')
+            .map(pair => pair.split(':').map(s => s.trim()))
+            .filter(([k, v]) => k && v)
+        )
+      );
+
+      const metaResult = await database.runAsync(
+        `INSERT INTO metadata (item_remote_id, attributes, created_at, updated_at, pending_sync)
+         VALUES (?, ?, ?, ?, ?)`,
+        [itemId, metaJSON, now, now, 1]
+      );
+
+      metaId = metaResult.lastInsertRowId;
+    } catch (err) {
+      console.error('Invalid metadata format', err);
+    }
+  }
+
+  // Insert tags
+  if (data.tags) {
+    const tagList = data.tags.split(',').map(t => t.trim()).filter(t => t.length > 0);
+
+    for (const tag of tagList) {
+      const existingRows = await database.getAllAsync(
+        `SELECT id FROM tags WHERE name = ?`,
+        [tag]
+      ) as { id: number }[];
+
+      let tagId: number;
+      if (existingRows.length > 0) {
+        tagId = existingRows[0].id;
+      } else {
+        const tagRes = await database.runAsync(
+          `INSERT INTO tags (name, created_at, updated_at, pending_sync)
+           VALUES (?, ?, ?, ?)`,
+          [tag, now, now, 1]
+        );
+        tagId = tagRes.lastInsertRowId;
+      }
+
+      await database.runAsync(
+        `INSERT INTO item_tags (item_remote_id, tag_remote_id, metadata_remote_id)
+         VALUES (?, ?, ?)`,
+        [itemId, tagId, metaId]
+      );
+    }
+  }
+}
+
+// Clear all tables
+export async function clearAll() {
+  const database = getDB();
+  try {
+    await database.runAsync(`PRAGMA foreign_keys = OFF`);
+
+    await database.runAsync(`DROP TABLE IF EXISTS item_images`);
+    await database.runAsync(`DROP TABLE IF EXISTS item_tags`);
+    await database.runAsync(`DROP TABLE IF EXISTS metadata`);
+    await database.runAsync(`DROP TABLE IF EXISTS tags`);
+    await database.runAsync(`DROP TABLE IF EXISTS items`);
+
+    await initDatabase();
+  } catch (err) {
+    console.error('Error clearing DB:', err);
+  }
+}
+
+// Delete item
+export async function deleteItem(itemId: number) {
+  const database = getDB();
+  const now = Date.now();
+
+  try {
+    await database.runAsync(
+      `UPDATE items SET deleted = 1, pending_sync = 1, updated_at = ? WHERE id = ?`,
+      [now, itemId]
+    );
+
+    await database.runAsync(
+      `UPDATE metadata SET deleted = 1, pending_sync = 1, updated_at = ? WHERE item_remote_id = ?`,
+      [now, itemId]
+    );
+
+    await database.runAsync(
+      `UPDATE item_tags SET deleted = 1 WHERE item_remote_id = ?`,
+      [itemId]
+    );
+
+    await database.runAsync(
+      `UPDATE item_images SET deleted = 1, pending_sync = 1, updated_at = ? 
+       WHERE metadata_remote_id IN (SELECT id FROM metadata WHERE item_remote_id = ?)`,
+      [now, itemId]
+    );
+  } catch (err) {
+    console.error('Error deleting item:', err);
+  }
 }
