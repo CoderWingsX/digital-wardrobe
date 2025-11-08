@@ -40,7 +40,7 @@ export default function ItemDetails() {
     
   }
 
-  if (!item) return <Text style={styles.loading}>Loading...</Text>;
+  if (!item) return <Text style={styles.loading}>Item not available (This shi needs to be fixed niga, not supposed to happen...)</Text>;
 
   return (
     <ScrollView contentContainerStyle={styles.container}>

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, Button, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
-import { loadItems, addItem, clearAll } from '../db';
+import { Alert, View, Text, TextInput, Button, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
+import { loadItems, addItem, clearAll, initDatabase } from '../db';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -24,7 +24,9 @@ export default function HomeScreen(){
     const navigation = useNavigation<HomeScreenNavigationProp>();
 
     async function RefreshItems() {
+        console.log("Refreshing…");
         const data = await loadItems();
+        console.log("Loaded:", data);
         setItems(data);
     }
 
@@ -55,9 +57,23 @@ export default function HomeScreen(){
     }
 
     async function handleClearAll() {
-    await clearAll();
-    await RefreshItems();
-    }
+        Alert.alert('Confirm', 'Delete all items?', [
+            { text: 'Cancel', style: 'cancel' },
+            {
+                text: 'Delete',
+                style: 'destructive',
+                onPress: async () => {
+                await clearAll();
+                console.log("Items Cleared.");
+                //console.log("Manual refresh");
+                //setItems([]);
+                await RefreshItems();
+                }
+            }
+            ]);
+        
+        
+      }
 
 
     return (

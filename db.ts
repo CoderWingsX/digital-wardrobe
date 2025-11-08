@@ -95,6 +95,11 @@ export async function loadItems() {
     ORDER BY i.id DESC
   `);
 
+  if (!rows || !Array.isArray(rows)) {
+    console.log("No rows, returning empty array");
+    return [];
+  }
+
   return rows.map((r: any) => {
     let metaObj = {};
     try {
@@ -193,13 +198,14 @@ export async function clearAll() {
   try {
     await database.runAsync(`PRAGMA foreign_keys = OFF`);
 
-    await database.runAsync(`DROP TABLE IF EXISTS item_images`);
-    await database.runAsync(`DROP TABLE IF EXISTS item_tags`);
-    await database.runAsync(`DROP TABLE IF EXISTS metadata`);
-    await database.runAsync(`DROP TABLE IF EXISTS tags`);
-    await database.runAsync(`DROP TABLE IF EXISTS items`);
-
-    await initDatabase();
+    await database.runAsync(`DELETE FROM item_images`);
+    await database.runAsync(`DELETE FROM item_tags`);
+    await database.runAsync(`DELETE FROM metadata`);
+    await database.runAsync(`DELETE FROM tags`);
+    await database.runAsync(`DELETE FROM items`);
+    await database.runAsync(`PRAGMA foreign_keys = ON`);
+    
+    console.log("Init db after Clearing all")
   } catch (err) {
     console.error('Error clearing DB:', err);
   }
