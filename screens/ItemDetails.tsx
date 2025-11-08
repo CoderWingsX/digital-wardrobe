@@ -22,7 +22,6 @@ export default function ItemDetails() {
   const [item, setItem] = useState<any>(null);
   const [isEditing, setIsEditing] = useState(false);
 
-  // Editable states
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
@@ -39,7 +38,6 @@ export default function ItemDetails() {
     }
     setItem(selected);
 
-    // Prefill edit states
     setName(selected.name);
     setDescription(selected.description);
     setCategory(selected.category);
@@ -57,7 +55,6 @@ export default function ItemDetails() {
       return;
     }
 
-    // Convert metadata array back to object
     const metaObj = Object.fromEntries(metadata.map(m => [m.key, m.value]));
 
     const tagArr = tags.split(',').map(t => t.trim()).filter(t => t.length > 0);
@@ -94,7 +91,6 @@ export default function ItemDetails() {
     ]);
   }
 
-  // Metadata field handlers
   const updateMetadataKey = (idx: number, key: string) => {
     const newMeta = [...metadata];
     newMeta[idx].key = key;
