@@ -241,3 +241,94 @@ export async function deleteItem(itemId: number) {
     console.error('Error deleting item:', err);
   }
 }
+
+// Update item
+export async function updateItem(itemId: number, data: {
+  name: string;
+  description: string;
+  category: string;
+  metadata?: Record<string, any>;
+  tags?: string[];
+}) {
+  const database = getDB();
+  const now = Date.now();
+
+  try {
+    // Update main item
+    await database.runAsync(
+      `UPDATE items
+       SET name = ?, description = ?, category = ?, updated_at = ?, pending_sync = 1
+       WHERE id = ?`,
+      [data.name, data.description, data.category, now, itemId]
+    );
+
+    // Update metadata
+    if (data.metadata) {
+      const metadataStr = JSON.stringify(data.metadata);
+
+      const existingMeta = await database.getAllAsync(
+        `SELECT id FROM metadata WHERE item_remote_id = ?`,
+        [itemId]
+      ) as { id: number }[];
+
+      if (existingMeta.length > 0) {
+        await database.runAsync(
+          `UPDATE metadata
+           SET attributes = ?, updated_at = ?, pending_sync = 1, deleted = 0
+           WHERE item_remote_id = ?`,
+          [metadataStr, now, itemId]
+        );
+      } else {
+        await database.runAsync(
+          `INSERT INTO metadata (item_remote_id, attributes, created_at, updated_at, pending_sync)
+           VALUES (?, ?, ?, ?, 1)`,
+          [itemId, metadataStr, now, now]
+        );
+      }
+    }
+
+    // Update tags
+    if (data.tags) {
+      await database.runAsync(
+        `DELETE FROM item_tags WHERE item_remote_id = ?`,
+        [itemId]
+      );
+
+      for (const tag of data.tags) {
+        const existingTagRows = await database.getAllAsync(
+          `SELECT id FROM tags WHERE name = ?`,
+          [tag]
+        ) as { id: number }[];
+
+        let tagId: number;
+        if (existingTagRows.length > 0) {
+          tagId = existingTagRows[0].id;
+        } else {
+          const tagRes = await database.runAsync(
+            `INSERT INTO tags (name, created_at, updated_at, pending_sync)
+             VALUES (?, ?, ?, 1)`,
+            [tag, now, now]
+          );
+          tagId = tagRes.lastInsertRowId;
+        }
+
+        const metaRows = await database.getAllAsync(
+          `SELECT id FROM metadata WHERE item_remote_id = ?`,
+          [itemId]
+        ) as { id: number }[];
+
+        const metaId = metaRows.length > 0 ? metaRows[0].id : null;
+
+        await database.runAsync(
+          `INSERT INTO item_tags (item_remote_id, tag_remote_id, metadata_remote_id)
+           VALUES (?, ?, ?)`,
+          [itemId, tagId, metaId]
+        );
+      }
+    }
+
+    console.log(`Item ${itemId} updated successfully.`);
+  } catch (err) {
+    console.error(`Error updating item ${itemId}:`, err);
+  }
+}
