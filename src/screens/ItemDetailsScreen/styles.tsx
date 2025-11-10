@@ -8,7 +8,7 @@ const styles = StyleSheet.create({
   loading: { marginTop: 10, fontSize: 18, textAlign: 'center' },
   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 5 },
   category: { fontSize: 18, color: '#555', marginBottom: 10 },
-  description: { fontSize: 16, marginBottom: 15 },
+  description: { fontSize: 16, fontStyle: 'italic', marginBottom: 15 },
   section: { marginBottom: 15 },
   sectionTitle: { fontWeight: 'bold', marginBottom: 5 },
   input: {
@@ -28,7 +28,7 @@ const styles = StyleSheet.create({
   metaCard: {
     padding: 10,
     borderRadius: 8,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#dfdfdfff',
     marginBottom: 8,
     flexDirection: 'row',
     justifyContent: 'space-between',

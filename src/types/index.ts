@@ -20,6 +20,7 @@ export interface WardrobeItem {
 export type RootStackParamList = {
   Home: undefined;
   ItemDetails: { itemId: number };
+  AddItem: undefined;
 };
 
 // Type for adding a new item.

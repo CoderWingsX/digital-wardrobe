@@ -7,6 +7,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useDatabase } from '../contexts/DatabaseContext';
 import HomeScreen from '../screens/HomeScreen';
 import ItemDetailsScreen from '../screens/ItemDetailsScreen';
+import AddItemScreen from '../screens/AddItemScreen';
 import { RootStackParamList } from '../types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -38,6 +39,11 @@ export default function AppNavigator() {
           name="ItemDetails"
           component={ItemDetailsScreen}
           options={{ title: 'Item Details' }}
+        />
+        <Stack.Screen
+          name="AddItem"
+          component={AddItemScreen}
+          options={{ title: 'Add Item' }}
         />
       </Stack.Navigator>
     </NavigationContainer>
