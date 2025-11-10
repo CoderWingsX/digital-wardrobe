@@ -1,3 +1,5 @@
+// src/screens/ItemDetailsScreen/index.tsx
+
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -6,48 +8,72 @@ import {
   ScrollView,
   Button,
   Alert,
-  StyleSheet,
-  TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
-import { loadItems, updateItem, deleteItem } from '../db';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { loadItems, updateItem, deleteItem } from '../../database/queries';
+import { RootStackParamList, WardrobeItem } from '../../types';
 
-type ItemDetailsRouteProp = RouteProp<{ params: { itemId: number } }, 'params'>;
+type ItemDetailsRouteProp = RouteProp<RootStackParamList, 'ItemDetails'>;
+type ItemDetailsNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'ItemDetails'
+>;
 
-export default function ItemDetails() {
+import styles from './styles';
+
+/**
+ * Screen to view and edit details of a specific wardrobe item.
+ * Fetches item data based on the passed itemId parameter.
+ * Allows editing and deleting the item.
+ */
+export default function ItemDetailsScreen() {
   const route = useRoute<ItemDetailsRouteProp>();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<ItemDetailsNavigationProp>();
   const { itemId } = route.params;
 
-  const [item, setItem] = useState<any>(null);
+  const [item, setItem] = useState<WardrobeItem | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
+  // Form state
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
-  const [metadata, setMetadata] = useState<{ key: string; value: string }[]>([]);
+  const [metadata, setMetadata] = useState<{ key: string; value: string }[]>(
+    []
+  );
   const [tags, setTags] = useState('');
 
+  // TODO?: Offload to SQL query with WHERE
   async function fetchItem() {
     const items = await loadItems();
-    const selected = items.find(i => i.id === itemId);
+    const selected = items.find((i) => i.id === itemId);
+
     if (!selected) {
       Alert.alert('Error', 'Item not found');
       navigation.goBack();
       return;
     }
+
     setItem(selected);
 
+    // Populate form state
     setName(selected.name);
     setDescription(selected.description);
     setCategory(selected.category);
-    setMetadata(Object.entries(selected.metadata || {}).map(([k, v]) => ({ key: k, value: String(v) })));
+    setMetadata(
+      Object.entries(selected.metadata || {}).map(([k, v]) => ({
+        key: k,
+        value: String(v),
+      }))
+    );
     setTags((selected.tags || []).join(', '));
   }
 
   useEffect(() => {
     fetchItem();
-  }, []);
+  }, [itemId]); // Re-fetch if itemId changes
 
   async function handleSave() {
     if (!name || !description || !category) {
@@ -55,9 +81,14 @@ export default function ItemDetails() {
       return;
     }
 
-    const metaObj = Object.fromEntries(metadata.map(m => [m.key, m.value]));
-
-    const tagArr = tags.split(',').map(t => t.trim()).filter(t => t.length > 0);
+    // Convert UI state to data state
+    const metaObj = Object.fromEntries(
+      metadata.filter((m) => m.key).map((m) => [m.key, m.value])
+    );
+    const tagArr = tags
+      .split(',')
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0);
 
     try {
       await updateItem(itemId, {
@@ -70,7 +101,7 @@ export default function ItemDetails() {
 
       Alert.alert('Success', 'Item updated!');
       setIsEditing(false);
-      fetchItem();
+      await fetchItem(); // Re-fetch to show new data
     } catch (err) {
       console.error(err);
       Alert.alert('Error', 'Failed to update item');
@@ -91,6 +122,7 @@ export default function ItemDetails() {
     ]);
   }
 
+  // --- Metadata field handlers ---
   const updateMetadataKey = (idx: number, key: string) => {
     const newMeta = [...metadata];
     newMeta[idx].key = key;
@@ -112,28 +144,52 @@ export default function ItemDetails() {
     newMeta.splice(idx, 1);
     setMetadata(newMeta);
   };
+  // ---
 
-  if (!item) return <Text style={styles.loading}>Loading item...</Text>;
+  if (!item) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" />
+        <Text style={styles.loading}>Loading item...</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
       {/* Name */}
       {isEditing ? (
-        <TextInput style={styles.input} placeholder="Name" value={name} onChangeText={setName} />
+        <TextInput
+          style={styles.input}
+          placeholder="Name"
+          value={name}
+          onChangeText={setName}
+        />
       ) : (
         <Text style={styles.title}>{item.name}</Text>
       )}
 
       {/* Category */}
       {isEditing ? (
-        <TextInput style={styles.input} placeholder="Category" value={category} onChangeText={setCategory} />
+        <TextInput
+          style={styles.input}
+          placeholder="Category"
+          value={category}
+          onChangeText={setCategory}
+        />
       ) : (
         <Text style={styles.category}>{item.category}</Text>
       )}
 
       {/* Description */}
       {isEditing ? (
-        <TextInput style={styles.input} placeholder="Description" value={description} onChangeText={setDescription} />
+        <TextInput
+          style={[styles.input, { minHeight: 80 }]}
+          placeholder="Description"
+          value={description}
+          onChangeText={setDescription}
+          multiline
+        />
       ) : (
         <Text style={styles.description}>{item.description}</Text>
       )}
@@ -148,16 +204,20 @@ export default function ItemDetails() {
                 <TextInput
                   style={[styles.input, { flex: 1, marginRight: 5 }]}
                   value={m.key}
-                  onChangeText={text => updateMetadataKey(idx, text)}
+                  onChangeText={(text) => updateMetadataKey(idx, text)}
                   placeholder="Key"
                 />
                 <TextInput
                   style={[styles.input, { flex: 2 }]}
                   value={m.value}
-                  onChangeText={text => updateMetadataValue(idx, text)}
+                  onChangeText={(text) => updateMetadataValue(idx, text)}
                   placeholder="Value"
                 />
-                <Button title="X" color="red" onPress={() => removeMetadataField(idx)} />
+                <Button
+                  title="X"
+                  color="red"
+                  onPress={() => removeMetadataField(idx)}
+                />
               </View>
             ))}
             <Button title="+ Add Field" onPress={addMetadataField} />
@@ -196,7 +256,11 @@ export default function ItemDetails() {
         {isEditing ? (
           <>
             <Button title="Save" onPress={handleSave} />
-            <Button title="Cancel" color="red" onPress={() => setIsEditing(false)} />
+            <Button
+              title="Cancel"
+              color="grey"
+              onPress={() => setIsEditing(false)}
+            />
           </>
         ) : (
           <>
@@ -208,34 +272,3 @@ export default function ItemDetails() {
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { padding: 20 },
-  loading: { padding: 20, fontSize: 18, textAlign: 'center' },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 5 },
-  category: { fontSize: 18, color: '#555', marginBottom: 10 },
-  description: { fontSize: 16, marginBottom: 15 },
-  section: { marginBottom: 15 },
-  sectionTitle: { fontWeight: 'bold', marginBottom: 5 },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 8,
-    marginBottom: 8,
-  },
-  metaRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 5 },
-  buttonRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 15 },
-  metaCard: {
-  padding: 10,
-  borderRadius: 8,
-  backgroundColor: '#eef',
-  marginBottom: 8,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 1 },
-  shadowOpacity: 0.1,
-  shadowRadius: 2,
-  },
-  metaKey: { fontWeight: 'bold', marginBottom: 2 },
-  metaValue: { color: '#333' },
-});
