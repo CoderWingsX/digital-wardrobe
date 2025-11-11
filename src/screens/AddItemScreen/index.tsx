@@ -1,4 +1,6 @@
-import React, { useEffect, useState } from 'react';
+// src/screens/AddItemScreen/index.tsx
+
+import React, { useState } from 'react';
 import {
   Alert,
   View,
@@ -6,97 +8,86 @@ import {
   TextInput,
   Button,
   ScrollView,
-  Switch
+  Switch,
 } from 'react-native';
-import { loadItems, addItem } from '../../database/queries';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList, WardrobeItem } from '../../types';
+import { RootStackParamList } from '../../types';
+import { useDatabase } from '../../contexts/DatabaseContext';
+import styles from './styles';
 
 type AddItemScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
   'AddItem'
 >;
-import styles from './styles';
 
-export default function AddItemScreen(){
-  const [items, setItems] = useState<WardrobeItem[]>([]);
+export default function AddItemScreen() {
+  const navigation = useNavigation<AddItemScreenNavigationProp>();
+  const { addItem: dbAddItem, refreshItems } = useDatabase();
+
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [metadata, setMetadata] = useState<{ key: string; value: string }[]>([]);
-  const [tags, setTags] = useState(''); 
+  const [tags, setTags] = useState('');
   const [multiAdd, setMultiAdd] = useState(false);
-  
-  const navigation = useNavigation<AddItemScreenNavigationProp>();
 
-  async function refreshItems() {
-      console.log('Refreshing…');
-      const data = await loadItems();
-      console.log('Loaded:', data);
-      setItems(data);
-    }
-
-  const addMetadataField = () => {
-    setMetadata([...metadata, { key: '', value: '' }]);
-  };
-
+  // --- Metadata handlers ---
+  const addMetadataField = () => setMetadata([...metadata, { key: '', value: '' }]);
   const removeMetadataField = (idx: number) => {
     const newMeta = [...metadata];
     newMeta.splice(idx, 1);
     setMetadata(newMeta);
   };
-
   const updateMetadata = (index: number, key: string, value: string) => {
     const newMeta = [...metadata];
     newMeta[index] = { key, value };
     setMetadata(newMeta);
   };
 
+  // --- Add item handler ---
   async function handleAddItem() {
     if (!name || !description || !category) {
       Alert.alert('Validation', 'Please fill in all required fields');
       return false;
     }
 
-    try{
-      const metaObj = Object.fromEntries(
-        metadata.filter((m) => m.key).map((m) => [m.key, m.value])
-      );
-      const tagArr = tags
-        .split(',')
-        .map((t) => t.trim())
-        .filter((t) => t.length > 0);
+    const metaObj = Object.fromEntries(
+      metadata.filter((m) => m.key).map((m) => [m.key, m.value])
+    );
+    const tagArr = tags
+      .split(',')
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0);
 
-      try {
-        await addItem({
-          name,
-          description,
-          category,
-          metadata: metaObj,
-          tags: tagArr,
-        });
+    try {
+      await dbAddItem({
+        name,
+        description,
+        category,
+        metadata: metaObj,
+        tags: tagArr,
+      });
 
-        Alert.alert('Success', 'Item added!');
+      Alert.alert('Success', 'Item added!');
 
-        setName('');
-        setDescription('');
-        setCategory('');
-        setMetadata([]);
-        setTags('');
+      // Clear form
+      setName('');
+      setDescription('');
+      setCategory('');
+      setMetadata([]);
+      setTags('');
 
-        await refreshItems();
-      } catch (err) {
-        console.error(err);
-        Alert.alert('Error', 'Failed to add item');
-      }
+      //await refreshItems(); // refresh cached state
       return true;
-    } catch {
-        return false;
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Error', 'Failed to add item');
+      return false;
     }
   }
 
-    return (
+  return (
     <View style={styles.container}>
       <ScrollView>
         <TextInput
@@ -154,23 +145,18 @@ export default function AddItemScreen(){
           <Switch value={multiAdd} onValueChange={setMultiAdd} />
           <Text style={{ marginLeft: 10 }}>Add multiple items</Text>
         </View>
+
         <View style={styles.buttonRow}>
           <Button
             title="Save Item"
             onPress={async () => {
               const result = await handleAddItem();
-
-              if (!result) return; // if validation failed
-
-              if (!multiAdd) {
-                navigation.goBack();
-              }
-
-              // If multi-add ON, fields get cleared inside handleAddItem anyway
+              if (!result) return; // validation failed
+              if (!multiAdd) navigation.goBack(); // go back if not multi-add
             }}
           />
         </View>
       </ScrollView>
-    </View>  
-  );    
+    </View>
+  );
 }

@@ -9,10 +9,10 @@ import {
   FlatList,
   TouchableOpacity,
 } from 'react-native';
-import { loadItems, addItem, clearAll } from '../../database/queries';
+import { useDatabase } from '../../contexts/DatabaseContext';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList, WardrobeItem } from '../../types';
+import { RootStackParamList } from '../../types';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -21,26 +21,9 @@ type HomeScreenNavigationProp = NativeStackNavigationProp<
 import styles from './styles';
 
 export default function HomeScreen() {
-  const [items, setItems] = useState<WardrobeItem[]>([]);
+  const { items, refreshItems, clearAll } = useDatabase();
   const navigation = useNavigation<HomeScreenNavigationProp>();
 
-  async function refreshItems() {
-    console.log('Refreshing…');
-    const data = await loadItems();
-    console.log('Loaded:', data);
-    setItems(data);
-  }
-
-  useEffect(() => {
-    refreshItems();
-  }, []);
-
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      refreshItems();
-    });
-    return unsubscribe;
-  }, [navigation]);
 
   async function handleClearAll() {
     Alert.alert('Confirm', 'Delete all items?', [
@@ -51,7 +34,6 @@ export default function HomeScreen() {
         onPress: async () => {
           await clearAll();
           console.log('Items Cleared.');
-          await refreshItems();
         },
       },
     ]);

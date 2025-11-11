@@ -12,8 +12,9 @@ import {
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { loadItems, updateItem, deleteItem } from '../../database/queries';
 import { RootStackParamList, WardrobeItem } from '../../types';
+import { useDatabase } from '../../contexts/DatabaseContext';
+import styles from './styles';
 
 type ItemDetailsRouteProp = RouteProp<RootStackParamList, 'ItemDetails'>;
 type ItemDetailsNavigationProp = NativeStackNavigationProp<
@@ -21,17 +22,12 @@ type ItemDetailsNavigationProp = NativeStackNavigationProp<
   'ItemDetails'
 >;
 
-import styles from './styles';
-
-/**
- * Screen to view and edit details of a specific wardrobe item.
- * Fetches item data based on the passed itemId parameter.
- * Allows editing and deleting the item.
- */
 export default function ItemDetailsScreen() {
   const route = useRoute<ItemDetailsRouteProp>();
   const navigation = useNavigation<ItemDetailsNavigationProp>();
   const { itemId } = route.params;
+
+  const { items, refreshItems, updateItem: dbUpdateItem, deleteItem: dbDeleteItem } = useDatabase();
 
   const [item, setItem] = useState<WardrobeItem | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -40,58 +36,52 @@ export default function ItemDetailsScreen() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
-  const [metadata, setMetadata] = useState<{ key: string; value: string }[]>(
-    []
-  );
+  const [metadata, setMetadata] = useState<{ key: string; value: string }[]>([]);
   const [tags, setTags] = useState('');
 
-  // TODO?: Offload to SQL query with WHERE
-  async function fetchItem() {
-    const items = await loadItems();
-    const selected = items.find((i) => i.id === itemId);
+  // --- Fetch item from cached items ---
+  function fetchItem() {
+    const selected = items.find(i => i.id === itemId);
 
     if (!selected) {
       Alert.alert('Error', 'Item not found');
       navigation.goBack();
-      return;
+      return null;
     }
 
     setItem(selected);
 
-    // Populate form state
     setName(selected.name);
     setDescription(selected.description);
     setCategory(selected.category);
     setMetadata(
-      Object.entries(selected.metadata || {}).map(([k, v]) => ({
-        key: k,
-        value: String(v),
-      }))
+      Object.entries(selected.metadata || {}).map(([k, v]) => ({ key: k, value: String(v) }))
     );
     setTags((selected.tags || []).join(', '));
+    return selected;
   }
 
   useEffect(() => {
     fetchItem();
-  }, [itemId]); // Re-fetch if itemId changes
+  }, [items, itemId]); // Re-fetch whenever cached items or itemId changes
 
-  async function handleSave() {
+  // --- Handlers ---
+  const handleSave = async () => {
     if (!name || !description || !category) {
       Alert.alert('Validation', 'Please fill in all required fields');
       return;
     }
 
-    // Convert UI state to data state
     const metaObj = Object.fromEntries(
-      metadata.filter((m) => m.key).map((m) => [m.key, m.value])
+      metadata.filter(m => m.key).map(m => [m.key, m.value])
     );
     const tagArr = tags
       .split(',')
-      .map((t) => t.trim())
-      .filter((t) => t.length > 0);
+      .map(t => t.trim())
+      .filter(t => t.length > 0);
 
     try {
-      await updateItem(itemId, {
+      await dbUpdateItem(itemId, {
         name,
         description,
         category,
@@ -99,28 +89,29 @@ export default function ItemDetailsScreen() {
         tags: tagArr,
       });
 
-      Alert.alert('Success', 'Item updated!');
+      //await refreshItems(); // refresh cached items
+      //fetchItem(); // update local state
       setIsEditing(false);
-      await fetchItem(); // Re-fetch to show new data
+      Alert.alert('Success', 'Item updated!');
     } catch (err) {
       console.error(err);
       Alert.alert('Error', 'Failed to update item');
     }
-  }
+  };
 
-  async function handleDelete() {
+  const handleDelete = async () => {
     Alert.alert('Confirm', 'Delete this item?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          await deleteItem(itemId);
+          await dbDeleteItem(itemId);
           navigation.goBack();
         },
       },
     ]);
-  }
+  };
 
   // --- Metadata field handlers ---
   const updateMetadataKey = (idx: number, key: string) => {
@@ -135,16 +126,12 @@ export default function ItemDetailsScreen() {
     setMetadata(newMeta);
   };
 
-  const addMetadataField = () => {
-    setMetadata([...metadata, { key: '', value: '' }]);
-  };
-
+  const addMetadataField = () => setMetadata([...metadata, { key: '', value: '' }]);
   const removeMetadataField = (idx: number) => {
     const newMeta = [...metadata];
     newMeta.splice(idx, 1);
     setMetadata(newMeta);
   };
-  // ---
 
   if (!item) {
     return (
@@ -159,24 +146,14 @@ export default function ItemDetailsScreen() {
     <ScrollView contentContainerStyle={styles.container}>
       {/* Name */}
       {isEditing ? (
-        <TextInput
-          style={styles.input}
-          placeholder="Name"
-          value={name}
-          onChangeText={setName}
-        />
+        <TextInput style={styles.input} placeholder="Name" value={name} onChangeText={setName} />
       ) : (
         <Text style={styles.title}>{item.name}</Text>
       )}
 
       {/* Category */}
       {isEditing ? (
-        <TextInput
-          style={styles.input}
-          placeholder="Category"
-          value={category}
-          onChangeText={setCategory}
-        />
+        <TextInput style={styles.input} placeholder="Category" value={category} onChangeText={setCategory} />
       ) : (
         <Text style={styles.category}>{item.category}</Text>
       )}
@@ -204,20 +181,16 @@ export default function ItemDetailsScreen() {
                 <TextInput
                   style={[styles.input, { flex: 1, marginRight: 5 }]}
                   value={m.key}
-                  onChangeText={(text) => updateMetadataKey(idx, text)}
+                  onChangeText={text => updateMetadataKey(idx, text)}
                   placeholder="Key"
                 />
                 <TextInput
                   style={[styles.input, { flex: 2 }]}
                   value={m.value}
-                  onChangeText={(text) => updateMetadataValue(idx, text)}
+                  onChangeText={text => updateMetadataValue(idx, text)}
                   placeholder="Value"
                 />
-                <Button
-                  title="X"
-                  color="red"
-                  onPress={() => removeMetadataField(idx)}
-                />
+                <Button title="X" color="red" onPress={() => removeMetadataField(idx)} />
               </View>
             ))}
             <Button title="+ Add Field" onPress={addMetadataField} />
@@ -256,11 +229,7 @@ export default function ItemDetailsScreen() {
         {isEditing ? (
           <>
             <Button title="Save" onPress={handleSave} />
-            <Button
-              title="Cancel"
-              color="grey"
-              onPress={() => setIsEditing(false)}
-            />
+            <Button title="Cancel" color="grey" onPress={() => setIsEditing(false)} />
           </>
         ) : (
           <>
