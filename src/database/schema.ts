@@ -32,13 +32,13 @@ export const CREATE_TABLE_STATEMENTS = `
 
   CREATE TABLE IF NOT EXISTS item_images (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    metadata_remote_id INTEGER,
+    item_remote_id INTEGER,
     image_path TEXT,
     created_at INTEGER,
     updated_at INTEGER,
     pending_sync INTEGER DEFAULT 1,
     deleted INTEGER DEFAULT 0,
-    FOREIGN KEY(metadata_remote_id) REFERENCES metadata(id)
+    FOREIGN KEY(item_remote_id) REFERENCES items(id)
   );
 
   CREATE TABLE IF NOT EXISTS tags (
@@ -53,12 +53,13 @@ export const CREATE_TABLE_STATEMENTS = `
 
   CREATE TABLE IF NOT EXISTS item_tags (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    metadata_remote_id INTEGER,
     item_remote_id INTEGER,
     tag_remote_id INTEGER,
+    created_at INTEGER,
+    updated_at INTEGER,
+    pending_sync INTEGER DEFAULT 1,
     deleted INTEGER DEFAULT 0,
     FOREIGN KEY(item_remote_id) REFERENCES items(id),
-    FOREIGN KEY(tag_remote_id) REFERENCES tags(id),
-    FOREIGN KEY(metadata_remote_id) REFERENCES metadata(id)
+    FOREIGN KEY(tag_remote_id) REFERENCES tags(id)
   );
 `;

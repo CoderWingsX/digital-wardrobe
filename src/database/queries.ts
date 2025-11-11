@@ -9,15 +9,20 @@ import { WardrobeItem, UpdateItemData, NewItemData } from '../types';
 export async function loadItems(): Promise<WardrobeItem[]> {
   const database = await getDB();
   const rows = await database.getAllAsync(`
-    SELECT i.id, i.name, i.category, i.description, i.created_at, i.updated_at,
-           m.attributes AS metadata,
-           GROUP_CONCAT(DISTINCT t.name) AS tags,
-           GROUP_CONCAT(DISTINCT ii.image_path) AS images
+    SELECT 
+      i.id, i.name, i.category, i.description, i.created_at, i.updated_at,
+      m.attributes AS metadata,
+      GROUP_CONCAT(DISTINCT t.name) AS tags,
+      GROUP_CONCAT(DISTINCT ii.image_path) AS images
     FROM items i
-    LEFT JOIN metadata m ON m.item_remote_id = i.id
-    LEFT JOIN item_tags it ON it.item_remote_id = i.id
-    LEFT JOIN tags t ON t.id = it.tag_remote_id
-    LEFT JOIN item_images ii ON ii.metadata_remote_id = m.id
+    LEFT JOIN metadata m 
+      ON m.item_remote_id = i.id AND m.deleted = 0
+    LEFT JOIN item_tags it 
+      ON it.item_remote_id = i.id AND it.deleted = 0
+    LEFT JOIN tags t 
+      ON t.id = it.tag_remote_id AND t.deleted = 0
+    LEFT JOIN item_images ii 
+      ON ii.item_remote_id = i.id AND ii.deleted = 0
     WHERE i.deleted = 0
     GROUP BY i.id
     ORDER BY i.id DESC
@@ -89,9 +94,9 @@ export async function addItem(data: NewItemData) {
           }
 
           await database.runAsync(
-            `INSERT INTO item_tags (item_remote_id, tag_remote_id, metadata_remote_id)
-             VALUES (?, ?, ?)`,
-            [itemId, tagId, metaId]
+            `INSERT INTO item_tags (item_remote_id, tag_remote_id)
+             VALUES (?, ?)`,
+            [itemId, tagId]
           );
         }
       }
@@ -108,6 +113,14 @@ export async function addItem(data: NewItemData) {
 export async function clearAll() {
   const database = await getDB();
   try {
+    /* await database.runAsync(`PRAGMA foreign_keys = OFF`);
+    await database.runAsync(`DROP TABLE IF EXISTS item_images`);
+    await database.runAsync(`DROP TABLE item_tags`);
+    await database.runAsync(`DROP TABLE metadata`);
+    await database.runAsync(`DROP TABLE tags`);
+    await database.runAsync(`DROP TABLE items`);
+    await database.runAsync(`PRAGMA foreign_keys = ON`); */
+
     await database.runAsync(`PRAGMA foreign_keys = OFF`);
     await database.runAsync(`DELETE FROM item_images`);
     await database.runAsync(`DELETE FROM item_tags`);
@@ -145,7 +158,7 @@ export async function deleteItem(itemId: number) {
       );
       await database.runAsync(
         `UPDATE item_images SET deleted = 1, pending_sync = 1, updated_at = ?
-         WHERE metadata_remote_id IN (SELECT id FROM metadata WHERE item_remote_id = ?)`,
+         WHERE item_remote_id = ?`,
         [now, itemId]
       );
     });
@@ -197,36 +210,64 @@ export async function updateItem(itemId: number, data: UpdateItemData) {
         metaId = metaRes.lastInsertRowId;
       }
 
-      // 3. Update tags (Wipe and replace)
-      await database.runAsync(
-        `DELETE FROM item_tags WHERE item_remote_id = ?`,
+      // 3. Update tags (soft-delete removed, insert new)
+      const existingTagRows = (await database.getAllAsync(
+        `SELECT id, tag_remote_id FROM item_tags WHERE item_remote_id = ? AND deleted = 0`,
         [itemId]
-      );
+      )) as { id: number; tag_remote_id: number }[];
+
+      const newTagIds: number[] = [];
 
       for (const tag of data.tags) {
-        const existingTagRows = (await database.getAllAsync(
+        // Check if tag already exists in item_tags
+        let tagId: number;
+
+        // Look for the tag in the global tags table
+        const existingTags = (await database.getAllAsync(
           `SELECT id FROM tags WHERE name = ?`,
           [tag]
         )) as { id: number }[];
 
-        let tagId: number;
-        if (existingTagRows.length > 0) {
-          tagId = existingTagRows[0].id;
+        if (existingTags.length > 0) {
+          tagId = existingTags[0].id;
         } else {
           const tagRes = await database.runAsync(
             `INSERT INTO tags (name, created_at, updated_at, pending_sync)
-             VALUES (?, ?, ?, 1)`,
+            VALUES (?, ?, ?, 1)`,
             [tag, now, now]
           );
           tagId = tagRes.lastInsertRowId;
         }
 
+        // Check if this tag is already linked to the item
+        const existingTagLink = existingTagRows.find(r => r.tag_remote_id === tagId);
+
+        if (existingTagLink) {
+          newTagIds.push(existingTagLink.id); // Keep existing link
+        } else {
+          const linkRes = await database.runAsync(
+            `INSERT INTO item_tags (item_remote_id, tag_remote_id, pending_sync, created_at, updated_at)
+            VALUES (?, ?, 1, ?, ?)`,
+            [itemId, tagId, now, now]
+          );
+          newTagIds.push(linkRes.lastInsertRowId);
+        }
+      }
+
+      // Soft-delete tags that were removed
+      const removedTagIds = existingTagRows
+        .filter(r => !newTagIds.includes(r.id))
+        .map(r => r.id);
+
+      if (removedTagIds.length > 0) {
         await database.runAsync(
-          `INSERT INTO item_tags (item_remote_id, tag_remote_id, metadata_remote_id)
-           VALUES (?, ?, ?)`,
-          [itemId, tagId, metaId]
+          `UPDATE item_tags
+          SET deleted = 1, pending_sync = 1, updated_at = ?
+          WHERE id IN (${removedTagIds.join(',')})`,
+          [now]
         );
       }
+
     });
     console.log(`[db] Item ${itemId} updated successfully.`);
   } catch (err) {
