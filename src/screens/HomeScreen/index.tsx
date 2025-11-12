@@ -12,7 +12,7 @@ import {
 import { useDatabase } from '../../contexts/DatabaseContext';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../types';
+import { RootStackParamList, WardrobeItem } from '../../types';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -21,9 +21,20 @@ type HomeScreenNavigationProp = NativeStackNavigationProp<
 import styles from './styles';
 
 export default function HomeScreen() {
-  const { items, refreshItems, clearAll } = useDatabase();
   const navigation = useNavigation<HomeScreenNavigationProp>();
+  const { items, loading, refresh, clearAllOptimistic } = useDatabase();
 
+  useEffect(() => {
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      refresh();
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   async function handleClearAll() {
     Alert.alert('Confirm', 'Delete all items?', [
@@ -32,8 +43,9 @@ export default function HomeScreen() {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          await clearAll();
-          console.log('Items Cleared.');
+          await clearAllOptimistic();
+          console.log('[db] Items Cleared.');
+          await refresh();
         },
       },
     ]);
@@ -42,8 +54,11 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.buttonRow}>
-          <Button title="Add Item" onPress={() => navigation.navigate('AddItem')} />
-          <Button title="Clear All" color="red" onPress={handleClearAll} />
+        <Button
+          title="Add Item"
+          onPress={() => navigation.navigate('AddItem')}
+        />
+        <Button title="Clear All" color="red" onPress={handleClearAll} />
       </View>
 
       <FlatList
