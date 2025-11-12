@@ -13,6 +13,7 @@ import { useDatabase } from '../../contexts/DatabaseContext';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList, WardrobeItem } from '../../types';
+import Toast from 'react-native-toast-message';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -42,6 +43,12 @@ export default function HomeScreen() {
         style: 'destructive',
         onPress: async () => {
           await clearAllOptimistic();
+
+          Toast.show({
+            type: 'success',
+            text1: 'All items cleared',
+          });
+
           console.log('[db] Items Cleared.');
           await refresh();
         },

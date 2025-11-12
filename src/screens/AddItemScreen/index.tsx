@@ -9,6 +9,7 @@ import {
   Switch,
 } from 'react-native';
 import { useDatabase } from '../../contexts/DatabaseContext';
+import Toast from 'react-native-toast-message';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList, WardrobeItem } from '../../types';
@@ -29,7 +30,6 @@ export default function AddItemScreen() {
   );
   const [tags, setTags] = useState('');
   const [multiAdd, setMultiAdd] = useState(false);
-  const [savedVisible, setSavedVisible] = useState(false);
 
   const navigation = useNavigation<AddItemScreenNavigationProp>();
 
@@ -170,17 +170,18 @@ export default function AddItemScreen() {
                 return;
               }
 
-              // Multi-add: show a small transient saved indicator instead of an alert
-              setSavedVisible(true);
-              setTimeout(() => setSavedVisible(false), 1400);
+              // Multi-add: show a non-blocking toast instead of an alert
+              Toast.show({
+                type: 'success',
+                text1: 'Saved!',
+                position: 'bottom', // put it at the bottom
+                visibilityTime: 1400,
+                bottomOffset: 60, // distance from bottom (adjust)
+              });
             }}
           />
         </View>
-        {savedVisible ? (
-          <View style={{ alignItems: 'center', marginTop: 8 }}>
-            <Text style={{ color: 'green' }}>Saved!</Text>
-          </View>
-        ) : null}
+        {/* Toast messages are rendered by the root Toast container */}
       </ScrollView>
     </View>
   );
