@@ -29,6 +29,7 @@ export default function AddItemScreen() {
   );
   const [tags, setTags] = useState('');
   const [multiAdd, setMultiAdd] = useState(false);
+  const [savedVisible, setSavedVisible] = useState(false);
 
   const navigation = useNavigation<AddItemScreenNavigationProp>();
 
@@ -72,7 +73,8 @@ export default function AddItemScreen() {
           tags: tagArr,
         });
 
-        Alert.alert('Success', 'Item added!');
+        // Do not block the user with an alert when multi-add is enabled.
+        // The caller will decide whether to show a toast-like message or navigate back.
 
         setName('');
         setDescription('');
@@ -162,13 +164,23 @@ export default function AddItemScreen() {
               if (!result) return; // if validation failed
 
               if (!multiAdd) {
+                // Single add: show a confirmation and go back.
+                Alert.alert('Success', 'Item added!');
                 navigation.goBack();
+                return;
               }
 
-              // If multi-add ON, fields get cleared inside handleAddItem anyway
+              // Multi-add: show a small transient saved indicator instead of an alert
+              setSavedVisible(true);
+              setTimeout(() => setSavedVisible(false), 1400);
             }}
           />
         </View>
+        {savedVisible ? (
+          <View style={{ alignItems: 'center', marginTop: 8 }}>
+            <Text style={{ color: 'green' }}>Saved!</Text>
+          </View>
+        ) : null}
       </ScrollView>
     </View>
   );

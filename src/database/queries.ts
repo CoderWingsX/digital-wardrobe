@@ -240,6 +240,12 @@ export async function updateItem(
         [itemId]
       );
 
+      // Note: This wipe-and-replace strategy is simple and reliable. For
+      // large tag sets or when building a sync system, you may prefer a
+      // diffing approach (compute tags to add/remove) to minimize writes
+      // and better preserve tag-level metadata. This is a performance
+      // optimization and not necessary for correctness here.
+
       for (const tag of data.tags) {
         const existingTagRows = (await database.getAllAsync(
           `SELECT id FROM tags WHERE name = ?`,
