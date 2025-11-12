@@ -70,6 +70,3 @@ export function getDB(): Promise<SQLite.SQLiteDatabase> {
 
   return dbPromise;
 }
-
-// Re-export query functions
-export * from './queries';
