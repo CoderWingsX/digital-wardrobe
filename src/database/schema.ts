@@ -60,8 +60,7 @@ export const CREATE_TABLE_STATEMENTS = `
     pending_sync INTEGER DEFAULT 1,
     deleted INTEGER DEFAULT 0,
     FOREIGN KEY(item_remote_id) REFERENCES items(id),
-    FOREIGN KEY(tag_remote_id) REFERENCES tags(id),
-    FOREIGN KEY(metadata_remote_id) REFERENCES metadata(id)
+    FOREIGN KEY(tag_remote_id) REFERENCES tags(id)
   );
 
   -- View that centralizes item joins for easy reads
@@ -74,7 +73,7 @@ export const CREATE_TABLE_STATEMENTS = `
   LEFT JOIN metadata m ON m.item_remote_id = i.id
   LEFT JOIN item_tags it ON it.item_remote_id = i.id
   LEFT JOIN tags t ON t.id = it.tag_remote_id
-  LEFT JOIN item_images ii ON ii.metadata_remote_id = m.id
+  LEFT JOIN item_images ii ON ii.item_remote_id = i.id
   WHERE i.deleted = 0
   GROUP BY i.id;
 
@@ -84,5 +83,4 @@ export const CREATE_TABLE_STATEMENTS = `
   CREATE INDEX IF NOT EXISTS idx_item_tags_item_remote_id ON item_tags(item_remote_id);
   CREATE INDEX IF NOT EXISTS idx_item_tags_tag_remote_id ON item_tags(tag_remote_id);
   CREATE INDEX IF NOT EXISTS idx_tags_name ON tags(name);
-  CREATE INDEX IF NOT EXISTS idx_item_images_metadata_remote_id ON item_images(metadata_remote_id);
 `;
