@@ -39,3 +39,12 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# dummy (will be removed)
+src 2/
+db.ts
+eas.json
+ggaergegr.tsx
+gpt.ts
+jest.config.cjs
+__tests__
