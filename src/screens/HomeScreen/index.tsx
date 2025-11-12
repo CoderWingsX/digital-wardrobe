@@ -36,6 +36,15 @@ export default function HomeScreen() {
   }, [navigation]);
 
   async function handleClearAll() {
+    if (items.length === 0) {
+      Toast.show({
+        type: 'info', // 'info' is a good type for this
+        text1: 'Wardrobe is already empty',
+        position: 'bottom', // You can specify position here too
+      });
+      return; // Stop the function here
+    }
+
     Alert.alert('Confirm', 'Delete all items?', [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -51,6 +60,9 @@ export default function HomeScreen() {
 
           console.log('[db] Items Cleared.');
           await refresh();
+          // Note: You probably don't need 'await refresh()' here
+          // because clearAllOptimistic already set items to []
+          // await refresh();
         },
       },
     ]);
