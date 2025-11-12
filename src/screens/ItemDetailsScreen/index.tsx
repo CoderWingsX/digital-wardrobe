@@ -70,7 +70,7 @@ export default function ItemDetailsScreen() {
     } else {
       // try refreshing once to load from DB
       (async () => {
-        await refresh(true);
+        await refresh();
         const s = items.find((i) => i.id === itemId);
         if (s) populateFromItem(s);
         else {

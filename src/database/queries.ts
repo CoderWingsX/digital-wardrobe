@@ -1,7 +1,33 @@
-// src/database/queries.tx
+// src/database/queries.ts
 
 import { getDB } from './index';
 import { WardrobeItem, UpdateItemData, NewItemData } from '../types';
+
+/**
+ * Helper to parse a single row from the items_full view.
+ */
+function parseItemRow(r: any): WardrobeItem {
+  return {
+    ...r,
+    metadata: r.metadata ? JSON.parse(r.metadata) : {},
+    tags: r.tags ? r.tags.split(',') : [],
+    images: r.images ? r.images.split(',') : [],
+  };
+}
+
+/**
+ * Loads a single item from the database.
+ */
+export async function loadItem(id: number): Promise<WardrobeItem | null> {
+  const database = await getDB();
+  const row = await database.getFirstAsync(
+    `SELECT * FROM items_full WHERE id = ?`,
+    [id]
+  );
+
+  if (!row) return null;
+  return parseItemRow(row);
+}
 
 /**
  * Loads all items from the database with their related data.
@@ -10,7 +36,7 @@ export async function loadItems(): Promise<WardrobeItem[]> {
   const database = await getDB();
   // read from the view that centralizes join logic
   const rows = await database.getAllAsync(
-    `SELECT * FROM items_full ORDER BY id DESC`
+    `SELECT * FROM items_full ORDER BY updated_at DESC` // Order by updated_at
   );
 
   if (!Array.isArray(rows)) {
@@ -18,25 +44,18 @@ export async function loadItems(): Promise<WardrobeItem[]> {
     return [];
   }
 
-  const items = rows.map((r: any) => ({
-    ...r,
-    metadata: r.metadata ? JSON.parse(r.metadata) : {},
-    tags: r.tags ? r.tags.split(',') : [],
-    images: r.images ? r.images.split(',') : [],
-  }));
-  return items;
+  return rows.map(parseItemRow);
 }
 
 /**
- * Adds a new item and its related data in a transaction.
+ * Adds a new item and returns the canonical item.
  */
-export async function addItem(data: NewItemData): Promise<number> {
+export async function addItem(data: NewItemData): Promise<WardrobeItem> {
   const database = await getDB();
   const now = Date.now();
 
   try {
     let itemId = -1;
-    let metaId: number | null = null;
 
     // Use a transaction for safety
     await database.withTransactionAsync(async () => {
@@ -48,6 +67,7 @@ export async function addItem(data: NewItemData): Promise<number> {
       );
       itemId = result.lastInsertRowId;
 
+      let metaId: number | null = null;
       // 2. Insert metadata
       if (data.metadata && Object.keys(data.metadata).length > 0) {
         const metaJSON = JSON.stringify(data.metadata);
@@ -88,12 +108,13 @@ export async function addItem(data: NewItemData): Promise<number> {
       }
     });
 
-    // callers (DatabaseContext) will refresh state as needed
-
-    return itemId;
+    // After transaction, load and return the new item
+    const newItem = await loadItem(itemId);
+    if (!newItem) throw new Error('Failed to retrieve new item after insert');
+    return newItem;
   } catch (err) {
     console.error('[db] Error adding item:', err);
-    throw err; // Re-throw to be handled by the UI
+    throw err;
   }
 }
 
@@ -111,22 +132,23 @@ export async function clearAll() {
     await database.runAsync(`DELETE FROM items`);
     await database.runAsync(`PRAGMA foreign_keys = ON`);
     console.log('[db] All tables cleared.');
-    // callers (DatabaseContext) will refresh state as needed
   } catch (err) {
     console.error('[db] Error clearing DB:', err);
+    throw err;
   }
 }
 
 /**
  * Marks an item and its related data as deleted.
+ * Returns the ID of the deleted item.
  */
-export async function deleteItem(itemId: number) {
+export async function deleteItem(itemId: number): Promise<number> {
   const database = await getDB();
   const now = Date.now();
 
   try {
-    // Use a transaction
     await database.withTransactionAsync(async () => {
+      // ... (All the UPDATE deleted = 1 logic from your Version 1) ...
       await database.runAsync(
         `UPDATE items SET deleted = 1, pending_sync = 1, updated_at = ? WHERE id = ?`,
         [now, itemId]
@@ -145,16 +167,20 @@ export async function deleteItem(itemId: number) {
         [now, itemId]
       );
     });
-    // callers (DatabaseContext) will refresh state as needed
+    return itemId;
   } catch (err) {
     console.error('[db] Error deleting item:', err);
+    throw err;
   }
 }
 
 /**
- * Updates an item and its related data.
+ * Updates an item and returns the updated canonical item.
  */
-export async function updateItem(itemId: number, data: UpdateItemData) {
+export async function updateItem(
+  itemId: number,
+  data: UpdateItemData
+): Promise<WardrobeItem> {
   const database = await getDB();
   const now = Date.now();
 
@@ -225,9 +251,13 @@ export async function updateItem(itemId: number, data: UpdateItemData) {
         );
       }
     });
-    console.log(`[db] Item ${itemId} updated successfully.`);
+
+    // After transaction, load and return the updated item
+    const updatedItem = await loadItem(itemId);
+    if (!updatedItem) throw new Error('Failed to retrieve item after update');
+    return updatedItem;
   } catch (err) {
     console.error(`[db] Error updating item ${itemId}:`, err);
-    throw err; // Re-throw to be handled by the UI
+    throw err;
   }
-}
+} 

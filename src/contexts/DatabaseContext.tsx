@@ -11,7 +11,7 @@ import { initDatabase } from '../database';
 import { WardrobeItem, NewItemData, UpdateItemData } from '../types';
 import {
   loadItems,
-  addItem,
+  addItem as dbAddItem,
   updateItem as dbUpdateItem,
   deleteItem as dbDeleteItem,
   clearAll as dbClearAll,
@@ -21,9 +21,12 @@ type DBContextValue = {
   dbReady: boolean;
   loading: boolean;
   items: WardrobeItem[];
-  refresh: (force?: boolean) => Promise<void>;
-  addItemOptimistic: (data: NewItemData) => Promise<number>;
-  updateItemOptimistic: (id: number, data: UpdateItemData) => Promise<void>;
+  refresh: () => Promise<void>;
+  addItemOptimistic: (data: NewItemData) => Promise<WardrobeItem>;
+  updateItemOptimistic: (
+    id: number,
+    data: UpdateItemData
+  ) => Promise<WardrobeItem>;
   deleteItemOptimistic: (id: number) => Promise<void>;
   clearAllOptimistic: () => Promise<void>;
 };
@@ -32,7 +35,7 @@ const DatabaseContext = createContext<DBContextValue | undefined>(undefined);
 
 export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
   const [dbReady, setDbReady] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Start loading true
   const [items, setItems] = useState<WardrobeItem[]>([]);
 
   // Initialize DB and load initial items
@@ -42,16 +45,15 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
         console.log('[db] Initializing database...');
         await initDatabase();
         setDbReady(true);
-        await refresh();
+        await refresh(); // Load initial data
         console.log('[db] Database is ready.');
       } catch (e) {
         console.error('[db] Error initializing database:', e);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const refresh = async (force = false) => {
+  const refresh = async () => {
     setLoading(true);
     try {
       const fresh = await loadItems();
@@ -63,8 +65,9 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Optimistic add: insert a temporary item into state, call DB, then reconcile
-  const addItemOptimistic = async (data: NewItemData): Promise<number> => {
+  const addItemOptimistic = async (
+    data: NewItemData
+  ): Promise<WardrobeItem> => {
     const tempId = Date.now() * -1; // negative temp id
     const now = Date.now();
     const tempItem: WardrobeItem = {
@@ -82,62 +85,75 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
       images: [],
     };
 
+    // 1. Optimistic state update
     setItems((s) => [tempItem, ...s]);
 
     try {
-      const newId = await addItem(data);
-      // After successful DB write, refresh to get canonical data (ids, images, etc.)
-      await refresh(true);
-      return newId;
+      // 2. Call DB. This now returns the canonical item.
+      const canonicalItem = await dbAddItem(data);
+
+      // 3. Reconcile state: replace temp item with canonical one
+      setItems((currentItems) =>
+        currentItems.map((it) => (it.id === tempId ? canonicalItem : it))
+      );
+      return canonicalItem;
     } catch (err) {
-      // rollback optimistic
+      // 4. Rollback: remove temp item
       setItems((s) => s.filter((it) => it.id !== tempId));
       console.error('[db] addItemOptimistic failed:', err);
       throw err;
     }
   };
 
-  // Optimistic update: apply changes locally, call DB, then reconcile
-  const updateItemOptimistic = async (id: number, data: UpdateItemData) => {
-    const prev = items.find((i) => i.id === id);
-    if (!prev) {
-      throw new Error(`Item ${id} not found in cache`);
-    }
+  const updateItemOptimistic = async (
+    id: number,
+    data: UpdateItemData
+  ): Promise<WardrobeItem> => {
+    const prevItems = items; // Store full previous state for rollback
+    const prevItem = prevItems.find((i) => i.id === id);
+    if (!prevItem) throw new Error(`Item ${id} not found`);
 
     const updatedLocal: WardrobeItem = {
-      ...prev,
-      name: data.name,
-      description: data.description,
-      category: data.category,
-      metadata: data.metadata,
-      tags: data.tags,
+      ...prevItem,
+      ...data, // Spread the new data
       updated_at: Date.now(),
       pending_sync: 1,
     };
 
+    // 1. Optimistic state update
     setItems((s) => s.map((it) => (it.id === id ? updatedLocal : it)));
 
     try {
-      await dbUpdateItem(id, data);
-      await refresh(true);
+      // 2. Call DB. This now returns the updated canonical item.
+      const canonicalItem = await dbUpdateItem(id, data);
+
+      // 3. Reconcile state: replace local item with canonical one
+      setItems((currentItems) =>
+        currentItems.map((it) => (it.id === id ? canonicalItem : it))
+      );
+      return canonicalItem;
     } catch (err) {
-      // rollback
-      setItems((s) => s.map((it) => (it.id === id ? prev : it)));
+      // 4. Rollback: restore previous state
+      setItems(prevItems);
       console.error('[db] updateItemOptimistic failed:', err);
       throw err;
     }
   };
 
-  const deleteItemOptimistic = async (id: number) => {
+  const deleteItemOptimistic = async (id: number): Promise<void> => {
     const prev = items.find((i) => i.id === id);
+    if (!prev) return; // Already deleted or doesn't exist
+
+    // 1. Optimistic state update
     setItems((s) => s.filter((it) => it.id !== id));
 
     try {
+      // 2. Call DB
       await dbDeleteItem(id);
-      await refresh(true);
+      // 3. On success, do nothing. State is already correct.
     } catch (err) {
-      // rollback
-      if (prev) setItems((s) => [prev, ...s]);
+      // 4. Rollback: add item back
+      setItems((s) => [prev, ...s]); // Or restore full list if order matters
       console.error('[db] deleteItemOptimistic failed:', err);
       throw err;
     }
@@ -145,11 +161,14 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
 
   const clearAllOptimistic = async () => {
     const prev = items;
+    // 1. Optimistic update
     setItems([]);
     try {
+      // 2. Call DB
       await dbClearAll();
-      await refresh(true);
+      // 3. On success, do nothing.
     } catch (err) {
+      // 4. Rollback
       setItems(prev);
       console.error('[db] clearAllOptimistic failed:', err);
       throw err;
