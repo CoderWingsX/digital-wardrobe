@@ -1,7 +1,8 @@
 // src/database/queries.ts
 
-import { getDB } from './index';
+import { getDB, dbEvents } from './index';
 import { WardrobeItem, UpdateItemData, NewItemData } from '../types';
+import { dbLog, dbError } from '../lib/logger';
 
 /**
  * Helper to parse a single row from the items_full view.
@@ -111,9 +112,15 @@ export async function addItem(data: NewItemData): Promise<WardrobeItem> {
     // After transaction, load and return the new item
     const newItem = await loadItem(itemId);
     if (!newItem) throw new Error('Failed to retrieve new item after insert');
+
+    dbLog('addItem: inserted', { itemId, name: data.name });
+    try {
+      dbEvents.emit('itemsChanged', { type: 'add', id: itemId });
+    } catch {}
+
     return newItem;
   } catch (err) {
-    console.error('[db] Error adding item:', err);
+    dbError('[db] Error adding item:', err, { payload: data });
     throw err;
   }
 }
@@ -131,9 +138,12 @@ export async function clearAll() {
     await database.runAsync(`DELETE FROM tags`);
     await database.runAsync(`DELETE FROM items`);
     await database.runAsync(`PRAGMA foreign_keys = ON`);
-    console.log('[db] All tables cleared.');
+    dbLog('All tables cleared.');
+    try {
+      dbEvents.emit('itemsChanged', { type: 'clearAll' });
+    } catch {}
   } catch (err) {
-    console.error('[db] Error clearing DB:', err);
+    dbError('[db] Error clearing DB:', err);
     throw err;
   }
 }
@@ -167,9 +177,13 @@ export async function deleteItem(itemId: number): Promise<number> {
         [now, itemId]
       );
     });
+    dbLog('deleteItem: marked deleted', { itemId });
+    try {
+      dbEvents.emit('itemsChanged', { type: 'delete', id: itemId });
+    } catch {}
     return itemId;
   } catch (err) {
-    console.error('[db] Error deleting item:', err);
+    dbError('[db] Error deleting item:', err);
     throw err;
   }
 }
@@ -255,9 +269,15 @@ export async function updateItem(
     // After transaction, load and return the updated item
     const updatedItem = await loadItem(itemId);
     if (!updatedItem) throw new Error('Failed to retrieve item after update');
+
+    dbLog('updateItem: updated', { itemId });
+    try {
+      dbEvents.emit('itemsChanged', { type: 'update', id: itemId });
+    } catch {}
+
     return updatedItem;
   } catch (err) {
-    console.error(`[db] Error updating item ${itemId}:`, err);
+    dbError(`[db] Error updating item ${itemId}:`, err);
     throw err;
   }
-} 
+}

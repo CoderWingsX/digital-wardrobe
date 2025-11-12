@@ -7,7 +7,7 @@ import React, {
   useState,
   ReactNode,
 } from 'react';
-import { initDatabase } from '../database';
+import { initDatabase, dbEvents } from '../database';
 import { WardrobeItem, NewItemData, UpdateItemData } from '../types';
 import {
   loadItems,
@@ -16,6 +16,7 @@ import {
   deleteItem as dbDeleteItem,
   clearAll as dbClearAll,
 } from '../database/queries';
+import { dbLog, dbError, uiLog } from '../lib/logger';
 
 type DBContextValue = {
   dbReady: boolean;
@@ -42,15 +43,26 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     (async () => {
       try {
-        console.log('[db] Initializing database...');
+        dbLog('Initializing database...');
         await initDatabase();
         setDbReady(true);
         await refresh(); // Load initial data
-        console.log('[db] Database is ready.');
+        dbLog('Database is ready.');
       } catch (e) {
-        console.error('[db] Error initializing database:', e);
+        dbError('Error initializing database:', e);
       }
     })();
+  }, []);
+
+  // Subscribe to external DB events (optional: background writers)
+  useEffect(() => {
+    const off = dbEvents.on('itemsChanged', async (payload) => {
+      dbLog('dbEvents.itemsChanged received', payload);
+      // refresh to make sure context stays consistent with DB
+      await refresh();
+    });
+    return off;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const refresh = async () => {
@@ -86,6 +98,7 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
     };
 
     // 1. Optimistic state update
+    uiLog('addItemOptimistic start', { tempId, payload: data });
     setItems((s) => [tempItem, ...s]);
 
     try {
@@ -96,11 +109,12 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
       setItems((currentItems) =>
         currentItems.map((it) => (it.id === tempId ? canonicalItem : it))
       );
+      uiLog('addItemOptimistic success', { tempId, id: canonicalItem.id });
       return canonicalItem;
     } catch (err) {
       // 4. Rollback: remove temp item
       setItems((s) => s.filter((it) => it.id !== tempId));
-      console.error('[db] addItemOptimistic failed:', err);
+      dbError('addItemOptimistic failed:', err, { tempId });
       throw err;
     }
   };
@@ -121,6 +135,7 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
     };
 
     // 1. Optimistic state update
+    uiLog('updateItemOptimistic start', { id, payload: data });
     setItems((s) => s.map((it) => (it.id === id ? updatedLocal : it)));
 
     try {
@@ -131,11 +146,12 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
       setItems((currentItems) =>
         currentItems.map((it) => (it.id === id ? canonicalItem : it))
       );
+      uiLog('updateItemOptimistic success', { id });
       return canonicalItem;
     } catch (err) {
       // 4. Rollback: restore previous state
       setItems(prevItems);
-      console.error('[db] updateItemOptimistic failed:', err);
+      dbError('updateItemOptimistic failed:', err, { id });
       throw err;
     }
   };
@@ -145,16 +161,18 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
     if (!prev) return; // Already deleted or doesn't exist
 
     // 1. Optimistic state update
+    uiLog('deleteItemOptimistic start', { id });
     setItems((s) => s.filter((it) => it.id !== id));
 
     try {
       // 2. Call DB
       await dbDeleteItem(id);
+      uiLog('deleteItemOptimistic success', { id });
       // 3. On success, do nothing. State is already correct.
     } catch (err) {
       // 4. Rollback: add item back
       setItems((s) => [prev, ...s]); // Or restore full list if order matters
-      console.error('[db] deleteItemOptimistic failed:', err);
+      dbError('deleteItemOptimistic failed:', err, { id });
       throw err;
     }
   };
@@ -162,15 +180,17 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
   const clearAllOptimistic = async () => {
     const prev = items;
     // 1. Optimistic update
+    uiLog('clearAllOptimistic start');
     setItems([]);
     try {
       // 2. Call DB
       await dbClearAll();
+      uiLog('clearAllOptimistic success');
       // 3. On success, do nothing.
     } catch (err) {
       // 4. Rollback
       setItems(prev);
-      console.error('[db] clearAllOptimistic failed:', err);
+      dbError('clearAllOptimistic failed:', err);
       throw err;
     }
   };
