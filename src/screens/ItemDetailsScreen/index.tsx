@@ -27,7 +27,7 @@ export default function ItemDetailsScreen() {
   const navigation = useNavigation<ItemDetailsNavigationProp>();
   const { itemId } = route.params;
 
-  const { items, refreshItems, updateItem: dbUpdateItem, deleteItem: dbDeleteItem } = useDatabase();
+  const { items, updateItem: dbUpdateItem, deleteItem: dbDeleteItem } = useDatabase();
 
   const [item, setItem] = useState<WardrobeItem | null>(null);
   const [isEditing, setIsEditing] = useState(false);

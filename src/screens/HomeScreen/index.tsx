@@ -1,6 +1,5 @@
 // src/screens/HomeScreen/index.tsx
 
-import React, { useEffect, useState } from 'react';
 import {
   Alert,
   View,
@@ -21,7 +20,7 @@ type HomeScreenNavigationProp = NativeStackNavigationProp<
 import styles from './styles';
 
 export default function HomeScreen() {
-  const { items, refreshItems, clearAll } = useDatabase();
+  const { items, clearAll } = useDatabase();
   const navigation = useNavigation<HomeScreenNavigationProp>();
 
 
