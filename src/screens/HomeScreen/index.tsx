@@ -24,10 +24,8 @@ export default function HomeScreen() {
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const { items, loading, refresh, clearAllOptimistic } = useDatabase();
 
-  useEffect(() => {
-    refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Initial data load is handled by DatabaseProvider; Home only needs
+  // to refresh on navigation focus which is handled below.
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {

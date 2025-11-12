@@ -7,7 +7,7 @@ import React, {
   useState,
   ReactNode,
 } from 'react';
-import { initDatabase, dbEvents } from '../database';
+import { initDatabase } from '../database';
 import { WardrobeItem, NewItemData, UpdateItemData } from '../types';
 import {
   loadItems,
@@ -54,16 +54,11 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
     })();
   }, []);
 
-  // Subscribe to external DB events (optional: background writers)
-  useEffect(() => {
-    const off = dbEvents.on('itemsChanged', async (payload) => {
-      dbLog('dbEvents.itemsChanged received', payload);
-      // refresh to make sure context stays consistent with DB
-      await refresh();
-    });
-    return off;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // NOTE: We intentionally do not subscribe to dbEvents here for
+  // user-initiated writes because the optimistic helpers already
+  // reconcile state. dbEvents is useful for external processes
+  // (background sync), but it can cause redundant refreshes for
+  // normal flows.
 
   const refresh = async () => {
     setLoading(true);

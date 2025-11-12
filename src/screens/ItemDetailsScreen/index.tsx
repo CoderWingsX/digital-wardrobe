@@ -13,6 +13,7 @@ import {
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useDatabase } from '../../contexts/DatabaseContext';
+import { loadItem } from '../../database/queries';
 import { RootStackParamList, WardrobeItem } from '../../types';
 
 type ItemDetailsRouteProp = RouteProp<RootStackParamList, 'ItemDetails'>;
@@ -64,21 +65,35 @@ export default function ItemDetailsScreen() {
   }
 
   useEffect(() => {
-    const selected = items.find((i) => i.id === itemId);
-    if (selected) {
-      populateFromItem(selected);
-    } else {
-      // try refreshing once to load from DB
-      (async () => {
-        await refresh();
-        const s = items.find((i) => i.id === itemId);
-        if (s) populateFromItem(s);
-        else {
+    let mounted = true;
+
+    (async () => {
+      // Prefer the in-memory item if available for instant display
+      const selected = items.find((i) => i.id === itemId);
+      if (selected) {
+        if (mounted) populateFromItem(selected);
+        return;
+      }
+
+      // Fall back to a targeted DB fetch to avoid reloading the whole list
+      try {
+        const loaded = await loadItem(itemId);
+        if (loaded) {
+          if (mounted) populateFromItem(loaded);
+        } else {
           Alert.alert('Error', 'Item not found');
           navigation.goBack();
         }
-      })();
-    }
+      } catch (err) {
+        console.error('[db] loadItem error', err);
+        Alert.alert('Error', 'Failed to load item');
+        navigation.goBack();
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemId, items]);
 
