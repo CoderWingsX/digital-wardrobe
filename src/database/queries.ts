@@ -101,9 +101,9 @@ export async function addItem(data: NewItemData): Promise<WardrobeItem> {
           }
 
           await database.runAsync(
-            `INSERT INTO item_tags (item_remote_id, tag_remote_id, metadata_remote_id)
-             VALUES (?, ?, ?)`,
-            [itemId, tagId, metaId]
+            `INSERT INTO item_tags (item_remote_id, tag_remote_id)
+             VALUES (?, ?)`,
+            [itemId, tagId]
           );
         }
       }
@@ -173,7 +173,7 @@ export async function deleteItem(itemId: number): Promise<number> {
       );
       await database.runAsync(
         `UPDATE item_images SET deleted = 1, pending_sync = 1, updated_at = ?
-         WHERE metadata_remote_id IN (SELECT id FROM metadata WHERE item_remote_id = ?)`,
+         WHERE item_remote_id = ?`,
         [now, itemId]
       );
     });
@@ -234,27 +234,26 @@ export async function updateItem(
         metaId = metaRes.lastInsertRowId;
       }
 
-      // 3. Update tags (Wipe and replace)
-      await database.runAsync(
-        `DELETE FROM item_tags WHERE item_remote_id = ?`,
+      // 3. Update tags (soft-delete removed, insert new)
+      const existingTagRows = (await database.getAllAsync(
+        `SELECT id, tag_remote_id FROM item_tags WHERE item_remote_id = ? AND deleted = 0`,
         [itemId]
-      );
+      )) as { id: number; tag_remote_id: number }[];
 
-      // Note: This wipe-and-replace strategy is simple and reliable. For
-      // large tag sets or when building a sync system, you may prefer a
-      // diffing approach (compute tags to add/remove) to minimize writes
-      // and better preserve tag-level metadata. This is a performance
-      // optimization and not necessary for correctness here.
+      const newTagIds: number[] = [];
 
       for (const tag of data.tags) {
-        const existingTagRows = (await database.getAllAsync(
+        // Check if tag already exists in item_tags
+        let tagId: number;
+
+        // Look for the tag in the global tags table
+        const existingTags = (await database.getAllAsync(
           `SELECT id FROM tags WHERE name = ?`,
           [tag]
         )) as { id: number }[];
 
-        let tagId: number;
-        if (existingTagRows.length > 0) {
-          tagId = existingTagRows[0].id;
+        if (existingTags.length > 0) {
+          tagId = existingTags[0].id;
         } else {
           const tagRes = await database.runAsync(
             `INSERT INTO tags (name, created_at, updated_at, pending_sync)
@@ -264,10 +263,34 @@ export async function updateItem(
           tagId = tagRes.lastInsertRowId;
         }
 
+        // Check if this tag is already linked to the item
+        const existingTagLink = existingTagRows.find(
+          (r) => r.tag_remote_id === tagId
+        );
+
+        if (existingTagLink) {
+          newTagIds.push(existingTagLink.id); // Keep existing link
+        } else {
+          const linkRes = await database.runAsync(
+            `INSERT INTO item_tags (item_remote_id, tag_remote_id, pending_sync, created_at, updated_at)
+            VALUES (?, ?, 1, ?, ?)`,
+            [itemId, tagId, now, now]
+          );
+          newTagIds.push(linkRes.lastInsertRowId);
+        }
+      }
+
+      // Soft-delete tags that were removed
+      const removedTagIds = existingTagRows
+        .filter((r) => !newTagIds.includes(r.id))
+        .map((r) => r.id);
+
+      if (removedTagIds.length > 0) {
         await database.runAsync(
-          `INSERT INTO item_tags (item_remote_id, tag_remote_id, metadata_remote_id)
-           VALUES (?, ?, ?)`,
-          [itemId, tagId, metaId]
+          `UPDATE item_tags
+          SET deleted = 1, pending_sync = 1, updated_at = ?
+          WHERE id IN (${removedTagIds.join(',')})`,
+          [now]
         );
       }
     });
