@@ -37,7 +37,23 @@ export async function loadItems(): Promise<WardrobeItem[]> {
   const database = await getDB();
   // read from the view that centralizes join logic
   const rows = await database.getAllAsync(
-    `SELECT * FROM items_full ORDER BY updated_at DESC` // Order by updated_at
+    `SELECT 
+      i.id, i.name, i.category, i.description, i.created_at, i.updated_at,
+      m.attributes AS metadata,
+      GROUP_CONCAT(DISTINCT t.name) AS tags,
+      GROUP_CONCAT(DISTINCT ii.image_path) AS images
+    FROM items i
+    LEFT JOIN metadata m 
+      ON m.item_remote_id = i.id AND m.deleted = 0
+    LEFT JOIN item_tags it 
+      ON it.item_remote_id = i.id AND it.deleted = 0
+    LEFT JOIN tags t 
+      ON t.id = it.tag_remote_id AND t.deleted = 0
+    LEFT JOIN item_images ii 
+      ON ii.item_remote_id = i.id AND ii.deleted = 0
+    WHERE i.deleted = 0
+    GROUP BY i.id
+    ORDER BY i.updated_at DESC`
   );
 
   if (!Array.isArray(rows)) {
