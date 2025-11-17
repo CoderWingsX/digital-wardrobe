@@ -20,6 +20,7 @@ export default function AppNavigator() {
   const { dbReady } = useDatabase();
 
   if (!dbReady) {
+    console.log('Database not ready, showing loading indicator.');
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" />

@@ -28,12 +28,13 @@ export default function HomeScreen() {
   // Initial data load is handled by DatabaseProvider; Home only needs
   // to refresh on navigation focus which is handled below.
 
-  useEffect(() => {
+  /* useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
+      console.log('[HomeScreen] Screen focused, refreshing data.');
       refresh();
     });
     return unsubscribe;
-  }, [navigation]);
+  }, [navigation]); */
 
   async function handleClearAll() {
     if (items.length === 0) {
