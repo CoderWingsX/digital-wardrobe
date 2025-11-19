@@ -1,7 +1,28 @@
 // src/database/queries.tx
 
-import { getDB } from './index';
+import { getDB, dbEvents } from './index';
 import { WardrobeItem, UpdateItemData, NewItemData } from '../types';
+import { dbLog, dbError } from '../lib/logger';
+
+function parseItemRow(r: any): WardrobeItem {
+  return {
+    ...r,
+    metadata: r.metadata ? JSON.parse(r.metadata) : {},
+    tags: r.tags ? r.tags.split(',') : [],
+    images: r.images ? r.images.split(',') : [],
+  };
+}
+
+export async function loadItem(id: number): Promise<WardrobeItem | null> {
+  const database = await getDB();
+  const row = await database.getFirstAsync(
+    `SELECT * FROM items_full WHERE id = ?`,
+    [id]
+  );
+
+  if (!row) return null;
+  return parseItemRow(row);
+}
 
 /**
  * Loads all items from the database with their related data.
@@ -33,23 +54,18 @@ export async function loadItems(): Promise<WardrobeItem[]> {
     return [];
   }
 
-  return rows.map((r: any) => ({
-    ...r,
-    metadata: r.metadata ? JSON.parse(r.metadata) : {},
-    tags: r.tags ? r.tags.split(',') : [],
-    images: r.images ? r.images.split(',') : [],
-  }));
+  return rows.map(parseItemRow);
 }
 
 /**
  * Adds a new item and its related data in a transaction.
  */
-export async function addItem(data: NewItemData) {
+export async function addItem(data: NewItemData): Promise<WardrobeItem> {
   const database = await getDB();
   const now = Date.now();
 
   try {
-    let itemId: number;
+    let itemId=-1;
     let metaId: number | null = null;
 
     // Use a transaction for safety
@@ -101,6 +117,16 @@ export async function addItem(data: NewItemData) {
         }
       }
     });
+    // After transaction, load and return the new item
+    const newItem = await loadItem(itemId);
+    if (!newItem) throw new Error('Failed to retrieve new item after insert');
+
+    dbLog('addItem: inserted', { itemId, name: data.name });
+    try {
+      dbEvents.emit('itemsChanged', { type: 'add', id: itemId });
+    } catch {}
+    return newItem;
+
   } catch (err) {
     console.error('[db] Error adding item:', err);
     throw err; // Re-throw to be handled by the UI
@@ -128,9 +154,13 @@ export async function clearAll() {
     await database.runAsync(`DELETE FROM tags`);
     await database.runAsync(`DELETE FROM items`);
     await database.runAsync(`PRAGMA foreign_keys = ON`);
-    console.log('[db] All tables cleared.');
+    dbLog('All tables cleared.');
+    try {
+      dbEvents.emit('itemsChanged', { type: 'clearAll' });
+    } catch {}
   } catch (err) {
-    console.error('[db] Error clearing DB:', err);
+    dbError('[db] Error clearing DB:', err);
+    throw err;
   }
 }
 
@@ -162,15 +192,21 @@ export async function deleteItem(itemId: number) {
         [now, itemId]
       );
     });
+    dbLog('deleteItem: marked deleted', { itemId });
+    try {
+      dbEvents.emit('itemsChanged', { type: 'delete', id: itemId });
+    } catch {}
+    return itemId;
   } catch (err) {
-    console.error('[db] Error deleting item:', err);
+    dbError('[db] Error deleting item:', err);
+    throw err;
   }
 }
 
 /**
  * Updates an item and its related data.
  */
-export async function updateItem(itemId: number, data: UpdateItemData) {
+export async function updateItem(itemId: number, data: UpdateItemData): Promise<WardrobeItem> {
   const database = await getDB();
   const now = Date.now();
 
@@ -269,9 +305,19 @@ export async function updateItem(itemId: number, data: UpdateItemData) {
       }
 
     });
-    console.log(`[db] Item ${itemId} updated successfully.`);
+
+    // After transaction, load and return the updated item
+    const updatedItem = await loadItem(itemId);
+    if (!updatedItem) throw new Error('Failed to retrieve item after update');
+
+    dbLog('updateItem: updated', { itemId });
+    try {
+      dbEvents.emit('itemsChanged', { type: 'update', id: itemId });
+    } catch {}
+
+    return updatedItem;
   } catch (err) {
-    console.error(`[db] Error updating item ${itemId}:`, err);
-    throw err; // Re-throw to be handled by the UI
+    dbError(`[db] Error updating item ${itemId}:`, err);
+    throw err;
   }
 }
