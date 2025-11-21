@@ -13,6 +13,7 @@ import {
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList, WardrobeItem } from '../../types';
+import { loadItem } from '../../database/queries';
 import { useDatabase } from '../../contexts/DatabaseContext';
 import styles from './styles';
 
@@ -26,9 +27,8 @@ export default function ItemDetailsScreen() {
   const route = useRoute<ItemDetailsRouteProp>();
   const navigation = useNavigation<ItemDetailsNavigationProp>();
   const { itemId } = route.params;
-
-  const { items, updateItem: dbUpdateItem, deleteItem: dbDeleteItem } = useDatabase();
-
+  const { items, refreshItems, updateItemOptimistic, deleteItemOptimistic } =
+    useDatabase();
   const [item, setItem] = useState<WardrobeItem | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
@@ -39,12 +39,58 @@ export default function ItemDetailsScreen() {
   const [metadata, setMetadata] = useState<{ key: string; value: string }[]>([]);
   const [tags, setTags] = useState('');
 
+/*   function populateFromItem(selected: WardrobeItem) {
+    setItem(selected);
+    setName(selected.name);
+    setDescription(selected.description);
+    setCategory(selected.category);
+    setMetadata(
+      Object.entries(selected.metadata || {}).map(([k, v]) => ({
+        key: k,
+        value: String(v),
+      }))
+    );
+    setTags((selected.tags || []).join(', '));
+  }
+
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      // Prefer the in-memory item if available for instant display
+      const selected = items.find((i) => i.id === itemId);
+      if (selected) {
+        if (mounted) populateFromItem(selected);
+        return;
+      }
+
+      // Fall back to a targeted DB fetch to avoid reloading the whole list
+      try {
+        const loaded = await loadItem(itemId);
+        if (loaded) {
+          if (mounted) populateFromItem(loaded);
+        } else {
+          Alert.alert('[Populate From Item]Error', 'Item not found');
+          navigation.goBack();
+        }
+      } catch (err) {
+        console.error('[db] loadItem error', err);
+        Alert.alert('Error', 'Failed to load item');
+        navigation.goBack();
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [itemId, items]); */
+
   // --- Fetch item from cached items ---
   function fetchItem() {
     const selected = items.find(i => i.id === itemId);
 
     if (!selected) {
-      Alert.alert('Error', 'Item not found');
+      Alert.alert('[FetchItems]Error', 'Item not found');
       navigation.goBack();
       return null;
     }
@@ -62,7 +108,11 @@ export default function ItemDetailsScreen() {
   }
 
   useEffect(() => {
-    fetchItem();
+    // Only fetch if item still exists in the cache
+    const selected = items.find(i => i.id === itemId);
+    if (selected) {
+      fetchItem();
+    }
   }, [items, itemId]); // Re-fetch whenever cached items or itemId changes
 
   // --- Handlers ---
@@ -81,7 +131,7 @@ export default function ItemDetailsScreen() {
       .filter(t => t.length > 0);
 
     try {
-      await dbUpdateItem(itemId, {
+      await updateItemOptimistic(itemId, {
         name,
         description,
         category,
@@ -106,7 +156,7 @@ export default function ItemDetailsScreen() {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          await dbDeleteItem(itemId);
+          await deleteItemOptimistic(itemId);
           navigation.goBack();
         },
       },

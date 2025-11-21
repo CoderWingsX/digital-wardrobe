@@ -1,6 +1,6 @@
 // src/screens/AddItemScreen/index.tsx
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   View,
@@ -14,6 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types';
 import { useDatabase } from '../../contexts/DatabaseContext';
+import Toast from 'react-native-toast-message';
 import styles from './styles';
 
 type AddItemScreenNavigationProp = NativeStackNavigationProp<
@@ -23,8 +24,7 @@ type AddItemScreenNavigationProp = NativeStackNavigationProp<
 
 export default function AddItemScreen() {
   const navigation = useNavigation<AddItemScreenNavigationProp>();
-  const { addItem: dbAddItem, refreshItems } = useDatabase();
-
+  const { addItemOptimistic } = useDatabase();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
@@ -46,43 +46,44 @@ export default function AddItemScreen() {
   };
 
   // --- Add item handler ---
-  async function handleAddItem() {
+async function handleAddItem() {
     if (!name || !description || !category) {
       Alert.alert('Validation', 'Please fill in all required fields');
       return false;
     }
 
-    const metaObj = Object.fromEntries(
-      metadata.filter((m) => m.key).map((m) => [m.key, m.value])
-    );
-    const tagArr = tags
-      .split(',')
-      .map((t) => t.trim())
-      .filter((t) => t.length > 0);
-
     try {
-      await dbAddItem({
-        name,
-        description,
-        category,
-        metadata: metaObj,
-        tags: tagArr,
-      });
+      const metaObj = Object.fromEntries(
+        metadata.filter((m) => m.key).map((m) => [m.key, m.value])
+      );
+      const tagArr = tags
+        .split(',')
+        .map((t) => t.trim())
+        .filter((t) => t.length > 0);
 
-      Alert.alert('Success', 'Item added!');
+      try {
+        await addItemOptimistic({
+          name,
+          description,
+          category,
+          metadata: metaObj,
+          tags: tagArr,
+        });
 
-      // Clear form
-      setName('');
-      setDescription('');
-      setCategory('');
-      setMetadata([]);
-      setTags('');
+        // Do not block the user with an alert when multi-add is enabled.
+        // The caller will decide whether to show a toast-like message or navigate back.
 
-      //await refreshItems(); // refresh cached state
+        setName('');
+        setDescription('');
+        setCategory('');
+        setMetadata([]);
+        setTags('');
+      } catch (err) {
+        console.error(err);
+        Alert.alert('Error', 'Failed to add item');
+      }
       return true;
-    } catch (err) {
-      console.error(err);
-      Alert.alert('Error', 'Failed to add item');
+    } catch {
       return false;
     }
   }
@@ -152,7 +153,20 @@ export default function AddItemScreen() {
             onPress={async () => {
               const result = await handleAddItem();
               if (!result) return; // validation failed
-              if (!multiAdd) navigation.goBack(); // go back if not multi-add
+              if (!multiAdd){
+                // Single add: show a confirmation and go back.
+                //Alert.alert('Success', 'Item added!');
+                navigation.goBack();
+                //return;
+              }
+
+              Toast.show({
+                type: 'success',
+                text1: 'Saved!',
+                position: 'bottom', // put it at the bottom
+                visibilityTime: 1400,
+                bottomOffset: 60, // distance from bottom (adjust)
+              });
             }}
           />
         </View>
