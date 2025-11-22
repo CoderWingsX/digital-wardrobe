@@ -13,6 +13,7 @@ import {
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList, WardrobeItem } from '../../types';
+import Toast from 'react-native-toast-message';
 import { loadItem } from '../../database/queries';
 import { useDatabase } from '../../contexts/DatabaseContext';
 import styles from './styles';
@@ -142,7 +143,14 @@ export default function ItemDetailsScreen() {
       //await refreshItems(); // refresh cached items
       //fetchItem(); // update local state
       setIsEditing(false);
-      Alert.alert('Success', 'Item updated!');
+      //Alert.alert('Success', 'Item updated!');
+      Toast.show({
+                      type: 'success',
+                      text1: 'Item Updated!',
+                      position: 'bottom', // put it at the bottom
+                      visibilityTime: 1400,
+                      bottomOffset: 60, // distance from bottom (adjust)
+                    });
     } catch (err) {
       console.error(err);
       Alert.alert('Error', 'Failed to update item');
@@ -158,6 +166,13 @@ export default function ItemDetailsScreen() {
         onPress: async () => {
           await deleteItemOptimistic(itemId);
           navigation.goBack();
+          Toast.show({
+                      type: 'info',
+                      text1: 'Item Deleted!',
+                      position: 'bottom', // put it at the bottom
+                      visibilityTime: 1400,
+                      bottomOffset: 60, // distance from bottom (adjust)
+                    });
         },
       },
     ]);
