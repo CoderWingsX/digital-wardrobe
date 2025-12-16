@@ -16,6 +16,7 @@ import {
   deleteItem as dbDeleteItem,
   clearAll as dbClearAll,
 } from '../database/queries';
+import { dbEvents } from '../database';
 import { dbLog, dbError, uiLog } from '../lib/logger';
 
 type DBContextValue = {
@@ -52,6 +53,23 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
         dbError('Error initializing database:', e);
       }
     })();
+
+    // Subscribe to DB-level events so cache can refresh when the DB changes
+    const unsub = dbEvents.on('itemsChanged', async (payload) => {
+      try {
+        dbLog('dbEvents.itemsChanged received, refreshing cache', payload);
+        await refresh();
+      } catch (e) {
+        dbError('Error refreshing on dbEvents.itemsChanged:', e);
+      }
+    });
+
+    return () => {
+      // Unsubscribe the event listener on unmount
+      try {
+        if (typeof unsub === 'function') unsub();
+      } catch {}
+    };
   }, []);
 
   // NOTE: We intentionally do not subscribe to dbEvents here for

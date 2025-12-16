@@ -11,8 +11,10 @@ function parseItemRow(r: any): WardrobeItem {
   return {
     ...r,
     metadata: r.metadata ? JSON.parse(r.metadata) : {},
-    tags: r.tags ? r.tags.split(',') : [],
-    images: r.images ? r.images.split(',') : [],
+    tags: r.tags
+      ? Array.from(new Set(r.tags.split(',').map((t: string) => t.trim()).filter((t: string) => t.length > 0)))
+      : [],
+    images: r.images ? r.images.split(',').map((i: string) => i.trim()).filter((i: string) => i.length > 0) : [],
   };
 }
 
@@ -96,11 +98,18 @@ export async function addItem(data: NewItemData): Promise<WardrobeItem> {
         metaId = metaResult.lastInsertRowId;
       }
 
-      // 3. Insert tags
+      // 3. Insert tags (normalize & case-insensitive lookup to avoid duplicate tag rows)
       if (data.tags && data.tags.length > 0) {
-        for (const tag of data.tags) {
+        const seen = new Set<string>();
+        for (let rawTag of data.tags) {
+          const tag = (rawTag || '').trim();
+          if (!tag) continue;
+          const lower = tag.toLowerCase();
+          if (seen.has(lower)) continue; // dedupe incoming for this insert
+          seen.add(lower);
+
           const existingRows = (await database.getAllAsync(
-            `SELECT id FROM tags WHERE name = ?`,
+            `SELECT id FROM tags WHERE LOWER(name) = LOWER(?) AND deleted = 0`,
             [tag]
           )) as { id: number }[];
 
@@ -250,21 +259,35 @@ export async function updateItem(
         metaId = metaRes.lastInsertRowId;
       }
 
-      // 3. Update tags (soft-delete removed, insert new)
+      // 3. Update tags (normalize incoming tags, dedupe, case-insensitive lookup)
+      const incomingTags = Array.isArray(data.tags)
+        ? Array.from(
+            new Set(
+              data.tags
+                .map((t: string) => (t || '').trim())
+                .filter((t: string) => t.length > 0)
+            )
+          )
+        : [];
+
       const existingTagRows = (await database.getAllAsync(
-        `SELECT id, tag_remote_id FROM item_tags WHERE item_remote_id = ? AND deleted = 0`,
+        `SELECT it.id, it.tag_remote_id, t.name as tag_name, LOWER(t.name) as tag_name_lower
+         FROM item_tags it
+         JOIN tags t ON t.id = it.tag_remote_id
+         WHERE it.item_remote_id = ? AND it.deleted = 0`,
         [itemId]
-      )) as { id: number; tag_remote_id: number }[];
+      )) as { id: number; tag_remote_id: number; tag_name: string; tag_name_lower: string }[];
 
       const newTagIds: number[] = [];
 
-      for (const tag of data.tags) {
-        // Check if tag already exists in item_tags
+      const incomingLowerSet = new Set(incomingTags.map((t: string) => t.toLowerCase()));
+
+      for (const tag of incomingTags) {
         let tagId: number;
 
-        // Look for the tag in the global tags table
+        // Case-insensitive search for existing tag to avoid duplicates
         const existingTags = (await database.getAllAsync(
-          `SELECT id FROM tags WHERE name = ?`,
+          `SELECT id FROM tags WHERE LOWER(name) = LOWER(?) AND deleted = 0`,
           [tag]
         )) as { id: number }[];
 
@@ -279,43 +302,70 @@ export async function updateItem(
           tagId = tagRes.lastInsertRowId;
         }
 
-        // Check if this tag is already linked to the item
-        const existingTagLink = existingTagRows.find(
-          (r) => r.tag_remote_id === tagId
-        );
+        // Check if this tag is already linked to the item (by tag_remote_id)
+        const existingTagLink = existingTagRows.find((r) => r.tag_remote_id === tagId);
 
         if (existingTagLink) {
           newTagIds.push(existingTagLink.id); // Keep existing link
         } else {
           const linkRes = await database.runAsync(
             `INSERT INTO item_tags (item_remote_id, tag_remote_id, pending_sync, created_at, updated_at)
-            VALUES (?, ?, 1, ?, ?)`,
+             VALUES (?, ?, 1, ?, ?)`,
             [itemId, tagId, now, now]
           );
           newTagIds.push(linkRes.lastInsertRowId);
         }
       }
 
-      // Soft-delete tags that were removed
+      // Soft-delete tags that were removed: compare by tag name (case-insensitive)
       const removedTagIds = existingTagRows
-        .filter((r) => !newTagIds.includes(r.id))
+        .filter((r) => !incomingLowerSet.has((r.tag_name_lower || '').toLowerCase()))
         .map((r) => r.id);
 
       if (removedTagIds.length > 0) {
         await database.runAsync(
           `UPDATE item_tags
-          SET deleted = 1, pending_sync = 1, updated_at = ?
-          WHERE id IN (${removedTagIds.join(',')})`,
+           SET deleted = 1, pending_sync = 1, updated_at = ?
+           WHERE id IN (${removedTagIds.join(',')})`,
           [now]
         );
       }
+
+      // Debugging/logging: show what changed
+      try {
+        dbLog('updateItem tags debug', { itemId, incomingTags, existingTagRows, newTagIds, removedTagIds });
+      } catch {}
     });
 
     // After transaction, load and return the updated item
     const updatedItem = await loadItem(itemId);
     if (!updatedItem) throw new Error('Failed to retrieve item after update');
 
-    dbLog('updateItem: updated', { itemId });
+    // Debug: log the canonical updated item so we can verify tags/meta in the DB
+    try {
+      dbLog('updateItem: updated', { itemId });
+      dbLog('updateItem: canonicalItem', updatedItem);
+    } catch {}
+    
+    // Extra debug: dump all item_tags rows for this item and the associated tags rows
+    try {
+      const itemTagRows = await database.getAllAsync(
+        `SELECT * FROM item_tags WHERE item_remote_id = ? ORDER BY id`,
+        [itemId]
+      );
+      dbLog('updateItem: item_tag rows (all)', itemTagRows);
+
+      // Collect tag ids referenced by these rows
+      const tagIds = Array.from(new Set((itemTagRows || []).map((r: any) => r.tag_remote_id))).filter(Boolean);
+      if (tagIds.length > 0) {
+        const tagsRows = await database.getAllAsync(
+          `SELECT * FROM tags WHERE id IN (${tagIds.join(',')}) ORDER BY id`
+        );
+        dbLog('updateItem: tags rows for item', tagsRows);
+      }
+    } catch (e) {
+      dbError('updateItem: debug dump failed', e);
+    }
     try {
       dbEvents.emit('itemsChanged', { type: 'update', id: itemId });
     } catch {}
