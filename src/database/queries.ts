@@ -43,7 +43,7 @@ export async function loadItems(): Promise<WardrobeItem[]> {
       i.id, i.name, i.category, i.description, i.created_at, i.updated_at,
       m.attributes AS metadata,
       GROUP_CONCAT(DISTINCT t.name) AS tags,
-      GROUP_CONCAT(DISTINCT ii.image_path) AS images
+      GROUP_CONCAT(DISTINCT ii.local_uri) AS images
     FROM items i
     LEFT JOIN metadata m 
       ON m.item_remote_id = i.id AND m.deleted = 0
@@ -132,6 +132,17 @@ export async function addItem(data: NewItemData): Promise<WardrobeItem> {
           );
         }
       }
+
+      // 4. Insert images
+      if (data.images && data.images.length > 0) {
+        for (const uri of data.images) {
+          await database.runAsync(
+            `INSERT INTO item_images (item_remote_id, local_uri, created_at, updated_at, pending_sync)
+             VALUES (?, ?, ?, ?, 1)`,
+            [itemId, uri, now, now]
+          );
+        }
+      }
     });
 
     // After transaction, load and return the new item
@@ -141,7 +152,7 @@ export async function addItem(data: NewItemData): Promise<WardrobeItem> {
     dbLog('addItem: inserted', { itemId, name: data.name });
     try {
       dbEvents.emit('itemsChanged', { type: 'add', id: itemId });
-    } catch {}
+    } catch { }
 
     return newItem;
   } catch (err) {
@@ -166,7 +177,7 @@ export async function clearAll() {
     dbLog('All tables cleared.');
     try {
       dbEvents.emit('itemsChanged', { type: 'clearAll' });
-    } catch {}
+    } catch { }
   } catch (err) {
     dbError('[db] Error clearing DB:', err);
     throw err;
@@ -205,7 +216,7 @@ export async function deleteItem(itemId: number): Promise<number> {
     dbLog('deleteItem: marked deleted', { itemId });
     try {
       dbEvents.emit('itemsChanged', { type: 'delete', id: itemId });
-    } catch {}
+    } catch { }
     return itemId;
   } catch (err) {
     dbError('[db] Error deleting item:', err);
@@ -262,12 +273,12 @@ export async function updateItem(
       // 3. Update tags (normalize incoming tags, dedupe, case-insensitive lookup)
       const incomingTags = Array.isArray(data.tags)
         ? Array.from(
-            new Set(
-              data.tags
-                .map((t: string) => (t || '').trim())
-                .filter((t: string) => t.length > 0)
-            )
+          new Set(
+            data.tags
+              .map((t: string) => (t || '').trim())
+              .filter((t: string) => t.length > 0)
           )
+        )
         : [];
 
       const existingTagRows = (await database.getAllAsync(
@@ -334,7 +345,45 @@ export async function updateItem(
       // Debugging/logging: show what changed
       try {
         dbLog('updateItem tags debug', { itemId, incomingTags, existingTagRows, newTagIds, removedTagIds });
-      } catch {}
+      } catch { }
+
+      // 4. Update images (Upsert/Soft Delete)
+      const incomingImages = Array.isArray(data.images)
+        ? data.images.filter((i) => i.trim().length > 0)
+        : [];
+      const incomingImgSet = new Set(incomingImages);
+
+      const existingImageRows = (await database.getAllAsync(
+        `SELECT id, local_uri FROM item_images WHERE item_remote_id = ? AND deleted = 0`,
+        [itemId]
+      )) as { id: number; local_uri: string }[];
+
+      // Add new images
+      for (const uri of incomingImages) {
+        // Simple check if this exact URI exists for this item
+        const exists = existingImageRows.find((r) => r.local_uri === uri);
+        if (!exists) {
+          await database.runAsync(
+            `INSERT INTO item_images (item_remote_id, local_uri, created_at, updated_at, pending_sync)
+             VALUES (?, ?, ?, ?, 1)`,
+            [itemId, uri, now, now]
+          );
+        }
+      }
+
+      // Soft-delete removed images
+      const removedImageIds = existingImageRows
+        .filter((r) => !incomingImgSet.has(r.local_uri))
+        .map((r) => r.id);
+
+      if (removedImageIds.length > 0) {
+        await database.runAsync(
+          `UPDATE item_images
+           SET deleted = 1, pending_sync = 1, updated_at = ?
+           WHERE id IN (${removedImageIds.join(',')})`,
+          [now]
+        );
+      }
     });
 
     // After transaction, load and return the updated item
@@ -345,8 +394,8 @@ export async function updateItem(
     try {
       dbLog('updateItem: updated', { itemId });
       dbLog('updateItem: canonicalItem', updatedItem);
-    } catch {}
-    
+    } catch { }
+
     // Extra debug: dump all item_tags rows for this item and the associated tags rows
     try {
       const itemTagRows = await database.getAllAsync(
@@ -368,7 +417,7 @@ export async function updateItem(
     }
     try {
       dbEvents.emit('itemsChanged', { type: 'update', id: itemId });
-    } catch {}
+    } catch { }
 
     return updatedItem;
   } catch (err) {

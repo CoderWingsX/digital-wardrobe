@@ -30,10 +30,17 @@ export const CREATE_TABLE_STATEMENTS = `
     FOREIGN KEY(item_remote_id) REFERENCES items(id)
   );
 
+  -- Drop table if it exists with old schema (DEV only helper really, or handled by migration)
+  -- For now, we relies on user clearing app data or we just let it fail if column missing? 
+  -- simpler: just recreate if not exists, but if exists we need migration.
+  -- Since this is dev, let's assume we can tolerate a drop or we use a new table name if we wanted to be safe.
+  -- But let's just stick to standard CREATE IF NOT EXISTS but with correct column.
+  -- NOTE: If you have existing data, you might need to uninstall/reinstall or clear data.
+  
   CREATE TABLE IF NOT EXISTS item_images (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     item_remote_id INTEGER,
-    image_path TEXT,
+    local_uri TEXT,
     created_at INTEGER,
     updated_at INTEGER,
     pending_sync INTEGER DEFAULT 1,
@@ -64,11 +71,12 @@ export const CREATE_TABLE_STATEMENTS = `
   );
 
   -- View that centralizes item joins for easy reads
+  DROP VIEW IF EXISTS items_full;
   CREATE VIEW IF NOT EXISTS items_full AS
   SELECT i.id, i.name, i.category, i.description, i.created_at, i.updated_at,
          m.attributes AS metadata,
          GROUP_CONCAT(DISTINCT t.name) AS tags,
-         GROUP_CONCAT(DISTINCT ii.image_path) AS images
+         GROUP_CONCAT(DISTINCT ii.local_uri) AS images
   FROM items i
   LEFT JOIN metadata m ON m.item_remote_id = i.id AND m.deleted = 0
   LEFT JOIN item_tags it ON it.item_remote_id = i.id AND it.deleted = 0

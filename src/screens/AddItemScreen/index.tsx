@@ -7,12 +7,15 @@ import {
   Button,
   ScrollView,
   Switch,
+  Image,
 } from 'react-native';
 import { useDatabase } from '../../contexts/DatabaseContext';
 import Toast from 'react-native-toast-message';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList, WardrobeItem } from '../../types';
+import ImagePickerButton from '../../components/ImagePickerButton';
+import { saveImageLocally, getLocalImageUri } from '../../lib/filesystem';
 
 type AddItemScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -29,6 +32,7 @@ export default function AddItemScreen() {
     []
   );
   const [tags, setTags] = useState('');
+  const [images, setImages] = useState<string[]>([]);
   const [multiAdd, setMultiAdd] = useState(false);
 
   const navigation = useNavigation<AddItemScreenNavigationProp>();
@@ -64,6 +68,19 @@ export default function AddItemScreen() {
         .map((t) => t.trim())
         .filter((t) => t.length > 0);
 
+      // Save images permanently
+      const savedImageUris: string[] = [];
+      try {
+        for (const uri of images) {
+          const newPath = await saveImageLocally(uri);
+          savedImageUris.push(newPath);
+        }
+      } catch (e) {
+        console.error('Failed to save images locally', e);
+        Alert.alert('Error', 'Failed to save images');
+        return false;
+      }
+
       try {
         await addItemOptimistic({
           name,
@@ -71,6 +88,7 @@ export default function AddItemScreen() {
           category,
           metadata: metaObj,
           tags: tagArr,
+          images: savedImageUris,
         });
 
         // Do not block the user with an alert when multi-add is enabled.
@@ -81,6 +99,7 @@ export default function AddItemScreen() {
         setCategory('');
         setMetadata([]);
         setTags('');
+        setImages([]);
       } catch (err) {
         console.error(err);
         Alert.alert('Error', 'Failed to add item');
@@ -136,6 +155,18 @@ export default function AddItemScreen() {
           </View>
         ))}
         <Button title="+ Add Metadata Field" onPress={addMetadataField} />
+
+        <Text style={styles.sectionTitle}>Images:</Text>
+        <ScrollView horizontal style={{ marginVertical: 10 }}>
+          {images.map((uri, idx) => (
+            <Image
+              key={idx}
+              source={{ uri: getLocalImageUri(uri) }}
+              style={{ width: 100, height: 100, marginRight: 10, borderRadius: 8 }}
+            />
+          ))}
+        </ScrollView>
+        <ImagePickerButton onImageSelected={(uri) => setImages([...images, uri])} />
 
         <Text style={styles.sectionTitle}>Tags:</Text>
         <TextInput

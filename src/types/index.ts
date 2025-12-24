@@ -30,6 +30,7 @@ export type NewItemData = {
   category: string;
   metadata: Record<string, any>; // structured
   tags: string[];
+  images?: string[];
 };
 
 // Type for updating an item.
@@ -39,6 +40,7 @@ export type UpdateItemData = {
   category: string;
   metadata: Record<string, any>;
   tags: string[];
+  images?: string[];
 };
 
 // Define more types as needed

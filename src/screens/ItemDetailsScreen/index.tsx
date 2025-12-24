@@ -9,12 +9,16 @@ import {
   Button,
   Alert,
   ActivityIndicator,
+  Image,
+  TouchableOpacity,
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useDatabase } from '../../contexts/DatabaseContext';
 import { loadItem } from '../../database/queries';
 import { RootStackParamList, WardrobeItem } from '../../types';
+import ImagePickerButton from '../../components/ImagePickerButton';
+import { saveImageLocally, deleteImageLocally, getLocalImageUri } from '../../lib/filesystem';
 
 type ItemDetailsRouteProp = RouteProp<RootStackParamList, 'ItemDetails'>;
 type ItemDetailsNavigationProp = NativeStackNavigationProp<
@@ -45,6 +49,7 @@ export default function ItemDetailsScreen() {
     []
   );
   const [tags, setTags] = useState('');
+  const [images, setImages] = useState<string[]>([]);
 
   // TODO?: Offload to SQL query with WHERE
   const { items, refresh, updateItemOptimistic, deleteItemOptimistic } =
@@ -62,6 +67,7 @@ export default function ItemDetailsScreen() {
       }))
     );
     setTags((selected.tags || []).join(', '));
+    setImages(selected.images || []);
   }
 
   useEffect(() => {
@@ -112,6 +118,32 @@ export default function ItemDetailsScreen() {
       .map((t) => t.trim())
       .filter((t) => t.length > 0);
 
+    const finalImageUris: string[] = [];
+    try {
+      // 1. Process new images
+      for (const uri of images) {
+        if (item?.images?.includes(uri)) {
+          finalImageUris.push(uri);
+        } else {
+          // It's a new temporary URI, save it
+          const savedPath = await saveImageLocally(uri);
+          finalImageUris.push(savedPath);
+        }
+      }
+
+      // 2. Cleanup deleted images (optional but good)
+      if (item?.images) {
+        const deleted = item.images.filter((old) => !images.includes(old));
+        for (const d of deleted) {
+          await deleteImageLocally(d);
+        }
+      }
+    } catch (e) {
+      console.error('Error processing images', e);
+      Alert.alert('Error', 'Failed to save images');
+      return;
+    }
+
     try {
       await updateItemOptimistic(itemId, {
         name,
@@ -119,6 +151,7 @@ export default function ItemDetailsScreen() {
         category,
         metadata: metaObj,
         tags: tagArr,
+        images: finalImageUris,
       });
 
       Alert.alert('Success', 'Item updated!');
@@ -179,6 +212,43 @@ export default function ItemDetailsScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      {/* Images */}
+      <View style={{ marginBottom: 20 }}>
+        <ScrollView horizontal style={{ marginBottom: 10 }}>
+          {images.map((uri, idx) => (
+            <View key={idx} style={{ marginRight: 10 }}>
+              <Image
+                source={{ uri: getLocalImageUri(uri) }}
+                style={{ width: 200, height: 200, borderRadius: 8 }}
+              />
+              {isEditing && (
+                <TouchableOpacity
+                  style={{
+                    position: 'absolute',
+                    top: 5,
+                    right: 5,
+                    backgroundColor: 'rgba(0,0,0,0.5)',
+                    borderRadius: 12,
+                    padding: 4,
+                  }}
+                  onPress={() => {
+                    setImages(images.filter((_, i) => i !== idx));
+                  }}
+                >
+                  <Text style={{ color: 'white', fontWeight: 'bold' }}>X</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ))}
+        </ScrollView>
+        {isEditing && (
+          <ImagePickerButton
+            title="Add Image"
+            onImageSelected={(uri) => setImages([...images, uri])}
+          />
+        )}
+      </View>
+
       {/* Name */}
       {isEditing ? (
         <TextInput
@@ -281,7 +351,10 @@ export default function ItemDetailsScreen() {
             <Button
               title="Cancel"
               color="grey"
-              onPress={() => setIsEditing(false)}
+              onPress={() => {
+                setIsEditing(false);
+                if (item) populateFromItem(item);
+              }}
             />
           </>
         ) : (

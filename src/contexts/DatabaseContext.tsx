@@ -68,7 +68,7 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
       // Unsubscribe the event listener on unmount
       try {
         if (typeof unsub === 'function') unsub();
-      } catch {}
+      } catch { }
     };
   }, []);
 
@@ -107,7 +107,7 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
       deleted: 0,
       metadata: data.metadata || {},
       tags: data.tags || [],
-      images: [],
+      images: data.images || [],
     };
 
     // 1. Optimistic state update
