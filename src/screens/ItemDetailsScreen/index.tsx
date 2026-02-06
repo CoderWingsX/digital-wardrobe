@@ -1,6 +1,6 @@
 // src/screens/ItemDetailsScreen/index.tsx
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,9 @@ import {
   ActivityIndicator,
   Image,
   TouchableOpacity,
+  Modal,
+  Dimensions,
+  FlatList,
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -19,6 +22,7 @@ import { loadItem } from '../../database/queries';
 import { RootStackParamList, WardrobeItem } from '../../types';
 import ImagePickerButton from '../../components/ImagePickerButton';
 import { saveImageLocally, deleteImageLocally, getLocalImageUri } from '../../lib/filesystem';
+import ImageViewer from 'react-native-image-zoom-viewer';
 
 type ItemDetailsRouteProp = RouteProp<RootStackParamList, 'ItemDetails'>;
 type ItemDetailsNavigationProp = NativeStackNavigationProp<
@@ -50,6 +54,9 @@ export default function ItemDetailsScreen() {
   );
   const [tags, setTags] = useState('');
   const [images, setImages] = useState<string[]>([]);
+  const [fullScreenImageIndex, setFullScreenImageIndex] = useState<number | null>(null);
+  const [activeCarouselIndex, setActiveCarouselIndex] = useState(0);
+  const carouselRef = useRef<FlatList>(null);
 
   // TODO?: Offload to SQL query with WHERE
   const { items, refresh, updateItemOptimistic, deleteItemOptimistic } =
@@ -212,35 +219,65 @@ export default function ItemDetailsScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      {/* Images */}
-      <View style={{ marginBottom: 20 }}>
-        <ScrollView horizontal style={{ marginBottom: 10 }}>
-          {images.map((uri, idx) => (
-            <View key={idx} style={{ marginRight: 10 }}>
-              <Image
-                source={{ uri: getLocalImageUri(uri) }}
-                style={{ width: 200, height: 200, borderRadius: 8 }}
-              />
-              {isEditing && (
-                <TouchableOpacity
-                  style={{
-                    position: 'absolute',
-                    top: 5,
-                    right: 5,
-                    backgroundColor: 'rgba(0,0,0,0.5)',
-                    borderRadius: 12,
-                    padding: 4,
-                  }}
-                  onPress={() => {
-                    setImages(images.filter((_, i) => i !== idx));
-                  }}
-                >
-                  <Text style={{ color: 'white', fontWeight: 'bold' }}>X</Text>
-                </TouchableOpacity>
+      {/* Images Carousel */}
+      <View style={styles.carouselContainer}>
+        {images.length > 0 && (
+          <>
+            <FlatList
+              ref={carouselRef}
+              data={images}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              snapToInterval={Dimensions.get('window').width - 40}
+              decelerationRate="fast"
+              onScroll={(event) => {
+                const slideSize = Dimensions.get('window').width - 40;
+                const index = Math.round(event.nativeEvent.contentOffset.x / slideSize);
+                setActiveCarouselIndex(index);
+              }}
+              scrollEventThrottle={16}
+              keyExtractor={(item, idx) => idx.toString()}
+              renderItem={({ item: uri, index: idx }) => (
+                <View style={styles.carouselSlide}>
+                  <TouchableOpacity
+                    onPress={() => setFullScreenImageIndex(idx)}
+                    activeOpacity={0.8}
+                  >
+                    <Image
+                      source={{ uri: getLocalImageUri(uri) }}
+                      style={styles.carouselImage}
+                    />
+                  </TouchableOpacity>
+                  {isEditing && (
+                    <TouchableOpacity
+                      style={styles.deleteImageButton}
+                      onPress={() => {
+                        setImages(images.filter((_, i) => i !== idx));
+                      }}
+                    >
+                      <Text style={{ color: 'white', fontWeight: 'bold' }}>X</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               )}
-            </View>
-          ))}
-        </ScrollView>
+            />
+            {/* Pagination Dots */}
+            {images.length > 1 && (
+              <View style={styles.paginationContainer}>
+                {images.map((_, idx) => (
+                  <View
+                    key={idx}
+                    style={[
+                      styles.paginationDot,
+                      idx === activeCarouselIndex && styles.paginationDotActive,
+                    ]}
+                  />
+                ))}
+              </View>
+            )}
+          </>
+        )}
         {isEditing && (
           <ImagePickerButton
             title="Add Image"
@@ -364,6 +401,39 @@ export default function ItemDetailsScreen() {
           </>
         )}
       </View>
+
+      {/* Full-Screen Image Modal */}
+      <Modal
+        visible={fullScreenImageIndex !== null}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setFullScreenImageIndex(null)}
+      >
+        <ImageViewer
+          imageUrls={images.map(uri => ({
+            url: getLocalImageUri(uri),
+          }))}
+          index={fullScreenImageIndex ?? 0}
+          enableSwipeDown={true}
+          onSwipeDown={() => setFullScreenImageIndex(null)}
+          onClick={() => setFullScreenImageIndex(null)}
+          backgroundColor="rgba(0, 0, 0, 0.95)"
+          saveToLocalByLongPress={false}
+          renderIndicator={(currentIndex, allSize) => (
+            <View style={styles.imageCounter}>
+              <Text style={styles.imageCounterText}>
+                {currentIndex}/{allSize}
+              </Text>
+            </View>
+          )}
+        />
+        <TouchableOpacity
+          style={styles.closeButton}
+          onPress={() => setFullScreenImageIndex(null)}
+        >
+          <Text style={styles.closeButtonText}>✕</Text>
+        </TouchableOpacity>
+      </Modal>
     </ScrollView>
   );
 }
