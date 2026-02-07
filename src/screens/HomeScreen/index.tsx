@@ -1,6 +1,4 @@
-// src/screens/HomeScreen/index.tsx
-
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
   Alert,
   View,
@@ -8,42 +6,36 @@ import {
   Button,
   FlatList,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import { useDatabase } from '../../contexts/DatabaseContext';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList, WardrobeItem } from '../../types';
+import { RootStackParamList } from '../../types';
 import Toast from 'react-native-toast-message';
+import { getLocalImageUri } from '../../lib/filesystem';
+import styles from './styles';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
   'Home'
 >;
-import styles from './styles';
 
 export default function HomeScreen() {
   const navigation = useNavigation<HomeScreenNavigationProp>();
-  const { items, loading, refresh, clearAllOptimistic } = useDatabase();
+  const { items, refresh, clearAllOptimistic } = useDatabase();
 
-  // Initial data load is handled by DatabaseProvider; Home only needs
-  // to refresh on navigation focus which is handled below.
-
-  /* useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      console.log('[HomeScreen] Screen focused, refreshing data.');
-      refresh();
-    });
-    return unsubscribe;
-  }, [navigation]); */
+  // All items should be displayed, even without images
+  const displayItems = items;
 
   async function handleClearAll() {
     if (items.length === 0) {
       Toast.show({
-        type: 'info', // 'info' is a good type for this
+        type: 'info',
         text1: 'Wardrobe is already empty',
-        position: 'bottom', // You can specify position here too
+        position: 'bottom',
       });
-      return; // Stop the function here
+      return;
     }
 
     Alert.alert('Confirm', 'Delete all items?', [
@@ -61,9 +53,6 @@ export default function HomeScreen() {
 
           console.log('[db] Items Cleared.');
           await refresh();
-          // Note: You probably don't need 'await refresh()' here
-          // because clearAllOptimistic already set items to []
-          // await refresh();
         },
       },
     ]);
@@ -81,7 +70,7 @@ export default function HomeScreen() {
 
       <FlatList
         style={styles.list}
-        data={items}
+        data={displayItems}
         keyExtractor={(item) => item.id.toString()}
         renderItem={({ item }) => (
           <TouchableOpacity
@@ -90,9 +79,25 @@ export default function HomeScreen() {
               navigation.navigate('ItemDetails', { itemId: item.id })
             }
           >
-            <Text style={styles.title}>{item.name}</Text>
-            <Text>{item.category}</Text>
-            <Text>{item.description}</Text>
+            {item.images && item.images.length > 0 ? (
+              <Image
+                source={{ uri: getLocalImageUri(item.images[0]) }}
+                style={styles.itemImage}
+              />
+            ) : (
+              <View style={[styles.itemImage, { justifyContent: 'center', alignItems: 'center' }]}>
+                <Text style={{ fontSize: 24 }}>👕</Text>
+              </View>
+            )}
+            <View style={styles.itemContent}>
+              <Text style={styles.title} numberOfLines={1}>
+                {item.name}
+              </Text>
+              <Text style={styles.category}>{item.category}</Text>
+              <Text style={styles.description} numberOfLines={2}>
+                {item.description}
+              </Text>
+            </View>
           </TouchableOpacity>
         )}
       />
