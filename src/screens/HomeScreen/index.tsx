@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Alert,
   View,
@@ -7,11 +7,14 @@ import {
   FlatList,
   TouchableOpacity,
   Image,
+  TextInput,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { useDatabase } from '../../contexts/DatabaseContext';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../types';
+import { RootStackParamList, WardrobeItem } from '../../types';
 import Toast from 'react-native-toast-message';
 import { getLocalImageUri } from '../../lib/filesystem';
 import styles from './styles';
@@ -21,12 +24,97 @@ type HomeScreenNavigationProp = NativeStackNavigationProp<
   'Home'
 >;
 
+interface Suggestion {
+  text: string;
+  type: 'name' | 'category' | 'tag' | 'metadata';
+  itemId?: number;
+}
+
 export default function HomeScreen() {
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const { items, refresh, clearAllOptimistic } = useDatabase();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
-  // All items should be displayed, even without images
-  const displayItems = items;
+  // Memoized filtered items for efficiency
+  const displayItems = useMemo(() => {
+    if (!searchQuery.trim()) return items;
+    const lowerQuery = searchQuery.toLowerCase();
+    return items.filter((item) => {
+      const nameMatch = item.name.toLowerCase().includes(lowerQuery);
+      const categoryMatch = item.category.toLowerCase().includes(lowerQuery);
+      const tagMatch = item.tags.some((tag) => tag.toLowerCase().includes(lowerQuery));
+      const metadataMatch = Object.entries(item.metadata || {}).some(
+        ([key, value]) =>
+          key.toLowerCase().includes(lowerQuery) ||
+          String(value).toLowerCase().includes(lowerQuery)
+      );
+      return nameMatch || categoryMatch || tagMatch || metadataMatch;
+    });
+  }, [items, searchQuery]);
+
+  // Generate suggestions based on query
+  const suggestions = useMemo(() => {
+    if (!searchQuery.trim() || searchQuery.length < 2) return [];
+    const lowerQuery = searchQuery.toLowerCase();
+    const result: Suggestion[] = [];
+    const seen = new Set<string>();
+
+    items.forEach((item) => {
+      // Name matches (direct links)
+      if (item.name.toLowerCase().includes(lowerQuery)) {
+        result.push({ text: item.name, type: 'name', itemId: item.id });
+      }
+      // Category matches
+      if (
+        item.category.toLowerCase().includes(lowerQuery) &&
+        !seen.has(`cat:${item.category.toLowerCase()}`)
+      ) {
+        result.push({ text: item.category, type: 'category' });
+        seen.add(`cat:${item.category.toLowerCase()}`);
+      }
+      // Tag matches
+      item.tags.forEach((tag) => {
+        if (
+          tag.toLowerCase().includes(lowerQuery) &&
+          !seen.has(`tag:${tag.toLowerCase()}`)
+        ) {
+          result.push({ text: tag, type: 'tag' });
+          seen.add(`tag:${tag.toLowerCase()}`);
+        }
+      });
+      // Metadata matches
+      Object.entries(item.metadata || {}).forEach(([key, value]) => {
+        const valStr = String(value);
+        if (
+          key.toLowerCase().includes(lowerQuery) &&
+          !seen.has(`meta:${key.toLowerCase()}`)
+        ) {
+          result.push({ text: key, type: 'metadata' });
+          seen.add(`meta:${key.toLowerCase()}`);
+        }
+        if (
+          valStr.toLowerCase().includes(lowerQuery) &&
+          !seen.has(`metaval:${valStr.toLowerCase()}`)
+        ) {
+          result.push({ text: valStr, type: 'metadata' });
+          seen.add(`metaval:${valStr.toLowerCase()}`);
+        }
+      });
+    });
+
+    return result.slice(0, 8); // Limit suggestions
+  }, [items, searchQuery]);
+
+  const handleSuggestionPress = (suggestion: Suggestion) => {
+    if (suggestion.itemId) {
+      navigation.navigate('ItemDetails', { itemId: suggestion.itemId });
+    } else {
+      setSearchQuery(suggestion.text);
+    }
+    setShowSuggestions(false);
+    Keyboard.dismiss();
+  };
 
   async function handleClearAll() {
     if (items.length === 0) {
@@ -45,13 +133,10 @@ export default function HomeScreen() {
         style: 'destructive',
         onPress: async () => {
           await clearAllOptimistic();
-
           Toast.show({
             type: 'success',
             text1: 'All items cleared',
           });
-
-          console.log('[db] Items Cleared.');
           await refresh();
         },
       },
@@ -59,48 +144,90 @@ export default function HomeScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.buttonRow}>
-        <Button
-          title="Add Item"
-          onPress={() => navigation.navigate('AddItem')}
-        />
-        <Button title="Clear All" color="red" onPress={handleClearAll} />
-      </View>
+    <TouchableWithoutFeedback onPress={() => setShowSuggestions(false)}>
+      <View style={styles.container}>
+        <View style={styles.buttonRow}>
+          <Button
+            title="Add Item"
+            onPress={() => navigation.navigate('AddItem')}
+          />
+          <Button title="Clear All" color="red" onPress={handleClearAll} />
+        </View>
 
-      <FlatList
-        style={styles.list}
-        data={displayItems}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.item}
-            onPress={() =>
-              navigation.navigate('ItemDetails', { itemId: item.id })
-            }
-          >
-            {item.images && item.images.length > 0 ? (
-              <Image
-                source={{ uri: getLocalImageUri(item.images[0]) }}
-                style={styles.itemImage}
+        {/* Search Section */}
+        <View style={styles.searchContainer}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search clothes, tags, colors..."
+            value={searchQuery}
+            onChangeText={(text) => {
+              setSearchQuery(text);
+              setShowSuggestions(true);
+            }}
+            onFocus={() => setShowSuggestions(true)}
+          />
+
+          {showSuggestions && suggestions.length > 0 && (
+            <View style={styles.suggestionsContainer}>
+              <FlatList
+                data={suggestions}
+                keyExtractor={(item, index) => index.toString()}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.suggestionItem}
+                    onPress={() => handleSuggestionPress(item)}
+                  >
+                    <Text style={styles.suggestionText} numberOfLines={1}>
+                      {item.text}
+                    </Text>
+                    <Text style={styles.suggestionType}>{item.type}</Text>
+                  </TouchableOpacity>
+                )}
               />
-            ) : (
-              <View style={[styles.itemImage, { justifyContent: 'center', alignItems: 'center' }]}>
-                <Text style={{ fontSize: 24 }}>👕</Text>
-              </View>
-            )}
-            <View style={styles.itemContent}>
-              <Text style={styles.title} numberOfLines={1}>
-                {item.name}
-              </Text>
-              <Text style={styles.category}>{item.category}</Text>
-              <Text style={styles.description} numberOfLines={2}>
-                {item.description}
-              </Text>
             </View>
-          </TouchableOpacity>
-        )}
-      />
-    </View>
+          )}
+        </View>
+
+        <FlatList
+          style={styles.list}
+          data={displayItems}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.item}
+              onPress={() => {
+                setShowSuggestions(false);
+                navigation.navigate('ItemDetails', { itemId: item.id });
+              }}
+            >
+              {item.images && item.images.length > 0 ? (
+                <Image
+                  source={{ uri: getLocalImageUri(item.images[0]) }}
+                  style={styles.itemImage}
+                />
+              ) : (
+                <View
+                  style={[
+                    styles.itemImage,
+                    { justifyContent: 'center', alignItems: 'center' },
+                  ]}
+                >
+                  <Text style={{ fontSize: 24 }}>👕</Text>
+                </View>
+              )}
+              <View style={styles.itemContent}>
+                <Text style={styles.title} numberOfLines={1}>
+                  {item.name}
+                </Text>
+                <Text style={styles.category}>{item.category}</Text>
+                <Text style={styles.description} numberOfLines={2}>
+                  {item.description}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
+        />
+      </View>
+    </TouchableWithoutFeedback>
   );
 }
