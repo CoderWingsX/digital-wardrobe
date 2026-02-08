@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Alert,
   View,
@@ -8,6 +8,8 @@ import {
   ScrollView,
   Switch,
   Image,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useDatabase } from '../../contexts/DatabaseContext';
 import Toast from 'react-native-toast-message';
@@ -111,8 +113,15 @@ export default function AddItemScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <ScrollView>
+    <KeyboardAvoidingView 
+      style={styles.container} 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    >
+      <ScrollView 
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingBottom: 40 }}
+      >
         <TextInput
           style={styles.input}
           placeholder="Item Name"
@@ -212,8 +221,7 @@ export default function AddItemScreen() {
             }}
           />
         </View>
-        {/* Toast messages are rendered by the root Toast container */}
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
