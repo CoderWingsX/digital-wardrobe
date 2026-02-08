@@ -15,7 +15,7 @@ import {
   Dimensions,
   FlatList,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useDatabase } from '../../contexts/DatabaseContext';
@@ -42,8 +42,7 @@ export default function ItemDetailsScreen() {
   const route = useRoute<ItemDetailsRouteProp>();
   const navigation = useNavigation<ItemDetailsNavigationProp>();
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const styles = createStyles(colors, insets.bottom);
+  const styles = createStyles(colors);
   const { itemId } = route.params;
 
   const [item, setItem] = useState<WardrobeItem | null>(null);
@@ -222,6 +221,7 @@ export default function ItemDetailsScreen() {
   }
 
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['bottom']}>
     <ScrollView contentContainerStyle={styles.container}>
       {/* Images Carousel */}
       <View style={styles.carouselContainer}>
@@ -445,5 +445,6 @@ export default function ItemDetailsScreen() {
         </TouchableOpacity>
       </Modal>
     </ScrollView>
+    </SafeAreaView>
   );
 }

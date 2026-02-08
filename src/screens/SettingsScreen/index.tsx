@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
   Share,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDatabase } from '../../contexts/DatabaseContext';
 import { useTheme, ThemeMode } from '../../contexts/ThemeContext';
 import {
@@ -32,8 +32,7 @@ import { createStyles } from './styles';
 export default function SettingsScreen() {
   const { schemaVersion, items, categories, allTags, refresh } = useDatabase();
   const { mode, setMode, colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const styles = createStyles(colors, insets.bottom);
+  const styles = createStyles(colors);
   const [loading, setLoading] = useState<string | null>(null);
   const [stats, setStats] = useState<{
     itemCount: number;
@@ -196,6 +195,7 @@ export default function SettingsScreen() {
   );
 
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface }} edges={['bottom']}>
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Appearance</Text>
@@ -339,5 +339,6 @@ export default function SettingsScreen() {
         }, true)}
       </View>
     </ScrollView>
+    </SafeAreaView>
   );
 }
