@@ -2,25 +2,52 @@
 
 import React from 'react';
 import { TouchableOpacity, Text } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import HomeScreen from '../screens/HomeScreen';
 import ItemDetailsScreen from '../screens/ItemDetailsScreen';
 import AddItemScreen from '../screens/AddItemScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import { RootStackParamList } from '../types';
+import { useTheme } from '../contexts/ThemeContext';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function AppNavigator() {
+  const { isDark, colors } = useTheme();
+
+  const navigationTheme = isDark ? {
+    ...DarkTheme,
+    colors: {
+      ...DarkTheme.colors,
+      background: colors.background,
+      card: colors.headerBackground,
+      text: colors.text,
+      border: colors.border,
+      primary: colors.primary,
+    },
+  } : {
+    ...DefaultTheme,
+    colors: {
+      ...DefaultTheme.colors,
+      background: colors.background,
+      card: colors.headerBackground,
+      text: colors.text,
+      border: colors.border,
+      primary: colors.primary,
+    },
+  };
+
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={navigationTheme}>
       <Stack.Navigator
         screenOptions={{
           animation: 'slide_from_right',
           animationDuration: 200,
-          contentStyle: { backgroundColor: '#fff' },
-          headerStyle: { backgroundColor: '#fff' },
+          contentStyle: { backgroundColor: colors.background },
+          headerStyle: { backgroundColor: colors.headerBackground },
+          headerTintColor: colors.text,
+          headerTitleStyle: { color: colors.text },
           gestureEnabled: true,
           gestureDirection: 'horizontal',
         }}
