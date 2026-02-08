@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Button, Alert } from 'react-native';
-import { useActionSheet } from '@expo/react-native-action-sheet';
 import * as ImagePicker from 'expo-image-picker';
+import CustomDialog from './CustomDialog';
 
 type Props = {
     onImageSelected: (uri: string) => void;
@@ -12,7 +12,7 @@ export default function ImagePickerButton({
     onImageSelected,
     title = 'Pick an Image',
 }: Props) {
-    const { showActionSheetWithOptions } = useActionSheet();
+    const [dialogVisible, setDialogVisible] = useState(false);
 
     const pickFromLibrary = async () => {
         try {
@@ -67,31 +67,39 @@ export default function ImagePickerButton({
     };
 
     const handlePress = () => {
-        const options = ['Take Photo', 'Choose from Library', 'Cancel'];
-        const cancelButtonIndex = 2;
-
-        showActionSheetWithOptions(
-            {
-                options,
-                cancelButtonIndex,
-                title: 'Select Image',
-            },
-            (selectedIndex) => {
-                switch (selectedIndex) {
-                    case 0:
-                        pickFromCamera();
-                        break;
-                    case 1:
-                        pickFromLibrary();
-                        break;
-                }
-            }
-        );
+        setDialogVisible(true);
     };
 
     return (
         <View>
             <Button title={title} onPress={handlePress} />
+            <CustomDialog
+                visible={dialogVisible}
+                title="Select Image"
+                message="Choose an option"
+                onDismiss={() => setDialogVisible(false)}
+                buttons={[
+                    {
+                        label: 'Choose from Library',
+                        onPress: () => {
+                            setDialogVisible(false);
+                            pickFromLibrary();
+                        },
+                    },
+                    {
+                        label: 'Take Photo',
+                        onPress: () => {
+                            setDialogVisible(false);
+                            pickFromCamera();
+                        },
+                    },
+                    {
+                        label: 'Cancel',
+                        style: 'cancel',
+                        onPress: () => setDialogVisible(false),
+                    },
+                ]}
+            />
         </View>
     );
 }

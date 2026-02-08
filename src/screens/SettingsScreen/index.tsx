@@ -10,8 +10,8 @@ import {
   ActivityIndicator,
   Share,
 } from 'react-native';
-import Dialog from 'react-native-dialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import CustomDialog from '../../components/CustomDialog';
 import { useDatabase } from '../../contexts/DatabaseContext';
 import { useTheme, ThemeMode } from '../../contexts/ThemeContext';
 import {
@@ -299,15 +299,27 @@ export default function SettingsScreen() {
           setLoadTestDialogVisible(true);
         })}
         
-        <Dialog.Container visible={loadTestDialogVisible}>
-          <Dialog.Title>Load Test Data</Dialog.Title>
-          <Dialog.Description>
-            This will download images and add test items to your wardrobe. Continue?
-          </Dialog.Description>
-          <Dialog.Button label="Cancel" onPress={() => setLoadTestDialogVisible(false)} />
-          <Dialog.Button label="Load (no images)" onPress={() => handleLoadTestData(false)} />
-          <Dialog.Button label="Load (with images)" onPress={() => handleLoadTestData(true)} />
-        </Dialog.Container>
+        <CustomDialog
+          visible={loadTestDialogVisible}
+          title="Load Test Data"
+          message="This will download images and add test items to your wardrobe. Continue?"
+          onDismiss={() => setLoadTestDialogVisible(false)}
+          buttons={[
+            {
+              label: 'Load (with images)',
+              onPress: () => handleLoadTestData(true),
+            },
+            {
+              label: 'Load (no images)',
+              onPress: () => handleLoadTestData(false),
+            },
+            {
+              label: 'Cancel',
+              style: 'cancel',
+              onPress: () => setLoadTestDialogVisible(false),
+            },
+          ]}
+        />
         {renderButton('unloadTest', 'Remove All Test Data', async () => {
           if (testDataCount === 0) {
             Alert.alert('No Test Data', 'There is no test data to remove.');
