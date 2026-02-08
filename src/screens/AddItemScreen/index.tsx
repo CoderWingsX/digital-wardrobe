@@ -13,21 +13,24 @@ import {
   TextInput as RNTextInput,
 } from 'react-native';
 import { useDatabase } from '../../contexts/DatabaseContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import Toast from 'react-native-toast-message';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types';
 import ImagePickerButton from '../../components/ImagePickerButton';
 import { saveImageLocally, getLocalImageUri } from '../../lib/filesystem';
+import { createStyles } from './styles';
 
 type AddItemScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
   'AddItem'
 >;
-import styles from './styles';
 
 export default function AddItemScreen() {
   const { addItemOptimistic } = useDatabase();
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const scrollViewRef = useRef<ScrollView>(null);
   const tagsInputRef = useRef<RNTextInput>(null);
   const [name, setName] = useState('');
@@ -132,6 +135,7 @@ export default function AddItemScreen() {
         <TextInput
           style={styles.input}
           placeholder="Enter item name"
+          placeholderTextColor={colors.textMuted}
           value={name}
           onChangeText={setName}
         />
@@ -142,6 +146,7 @@ export default function AddItemScreen() {
         <TextInput
           style={styles.input}
           placeholder="Enter description"
+          placeholderTextColor={colors.textMuted}
           value={description}
           onChangeText={setDescription}
         />
@@ -152,6 +157,7 @@ export default function AddItemScreen() {
         <TextInput
           style={styles.input}
           placeholder="Enter category"
+          placeholderTextColor={colors.textMuted}
           value={category}
           onChangeText={setCategory}
         />
@@ -164,12 +170,14 @@ export default function AddItemScreen() {
               value={m.key}
               onChangeText={(text) => updateMetadata(idx, text, m.value)}
               placeholder="Key"
+              placeholderTextColor={colors.textMuted}
             />
             <TextInput
               style={[styles.input, { flex: 2 }]}
               value={m.value}
               onChangeText={(text) => updateMetadata(idx, m.key, text)}
               placeholder="Value"
+              placeholderTextColor={colors.textMuted}
             />
             <Button
               title="X"
@@ -197,6 +205,7 @@ export default function AddItemScreen() {
           ref={tagsInputRef}
           style={styles.input}
           placeholder="Tags (comma-separated)"
+          placeholderTextColor={colors.textMuted}
           value={tags}
           onChangeText={setTags}
           onFocus={() => {
@@ -214,7 +223,7 @@ export default function AddItemScreen() {
           }}
         >
           <Switch value={multiAdd} onValueChange={setMultiAdd} />
-          <Text style={{ marginLeft: 10 }}>Add multiple items</Text>
+          <Text style={{ marginLeft: 10, color: colors.text }}>Add multiple items</Text>
         </View>
         <View style={styles.buttonRow}>
           <Button

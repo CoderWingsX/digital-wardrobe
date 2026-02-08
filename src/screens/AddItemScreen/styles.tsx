@@ -1,23 +1,26 @@
 import { StyleSheet } from 'react-native';
+import { ThemeColors } from '../../contexts/ThemeContext';
 
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20 },
+export const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  container: { flex: 1, padding: 20, backgroundColor: colors.background },
   label: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#333',
+    color: colors.text,
     marginBottom: 4,
   },
   required: {
-    color: '#FF3B30',
+    color: colors.danger,
     fontWeight: '600',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: colors.inputBorder,
     borderRadius: 8,
     padding: 10,
     marginBottom: 12,
+    backgroundColor: colors.inputBackground,
+    color: colors.text,
   },
   buttonRow: {
     flexDirection: 'row',
@@ -28,21 +31,20 @@ const styles = StyleSheet.create({
   list: { flex: 1, marginTop: 20 },
   item: {
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: colors.border,
     borderRadius: 8,
     padding: 10,
     marginBottom: 10,
+    backgroundColor: colors.card,
   },
-  title: { fontWeight: 'bold', fontSize: 16 },
+  title: { fontWeight: 'bold', fontSize: 16, color: colors.text },
   sectionTitle: { 
     fontWeight: '600', 
     fontSize: 15,
     marginTop: 16, 
     marginBottom: 8,
-    color: '#333',
+    color: colors.text,
   },
   metaRow: { flexDirection: 'row', alignItems: 'center' },
-  modalView: { flex: 1, padding: 16, backgroundColor: 'white' },
+  modalView: { flex: 1, padding: 16, backgroundColor: colors.background },
 });
-
-export default styles;
