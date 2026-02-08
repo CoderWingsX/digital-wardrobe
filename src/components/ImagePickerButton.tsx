@@ -83,14 +83,18 @@ export default function ImagePickerButton({
                         label: 'Choose from Library',
                         onPress: () => {
                             setDialogVisible(false);
-                            pickFromLibrary();
+                            setTimeout(() => {
+                                pickFromLibrary();
+                            }, 300);
                         },
                     },
                     {
                         label: 'Take Photo',
                         onPress: () => {
                             setDialogVisible(false);
-                            pickFromCamera();
+                            setTimeout(() => {
+                                pickFromCamera();
+                            }, 300);
                         },
                     },
                     {
