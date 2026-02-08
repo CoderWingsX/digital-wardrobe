@@ -19,12 +19,23 @@ function parseItemRow(r: any): WardrobeItem {
 }
 
 /**
- * Loads a single item from the database.
+ * Loads a single item from the database with all related data.
  */
 export async function loadItem(id: number): Promise<WardrobeItem | null> {
   const database = await getDB();
   const row = await database.getFirstAsync(
-    `SELECT * FROM items_full WHERE id = ?`,
+    `SELECT 
+      i.id, i.name, i.category, i.description, i.created_at, i.updated_at,
+      m.attributes AS metadata,
+      GROUP_CONCAT(DISTINCT t.name) AS tags,
+      GROUP_CONCAT(DISTINCT ii.local_uri) AS images
+    FROM items i
+    LEFT JOIN metadata m ON m.item_id = i.id AND m.deleted = 0
+    LEFT JOIN item_tags it ON it.item_id = i.id AND it.deleted = 0
+    LEFT JOIN tags t ON t.id = it.tag_id AND t.deleted = 0
+    LEFT JOIN item_images ii ON ii.item_id = i.id AND ii.deleted = 0
+    WHERE i.id = ? AND i.deleted = 0
+    GROUP BY i.id`,
     [id]
   );
 
@@ -37,7 +48,6 @@ export async function loadItem(id: number): Promise<WardrobeItem | null> {
  */
 export async function loadItems(): Promise<WardrobeItem[]> {
   const database = await getDB();
-  // read from the view that centralizes join logic
   const rows = await database.getAllAsync(
     `SELECT 
       i.id, i.name, i.category, i.description, i.created_at, i.updated_at,
@@ -45,21 +55,17 @@ export async function loadItems(): Promise<WardrobeItem[]> {
       GROUP_CONCAT(DISTINCT t.name) AS tags,
       GROUP_CONCAT(DISTINCT ii.local_uri) AS images
     FROM items i
-    LEFT JOIN metadata m 
-      ON m.item_remote_id = i.id AND m.deleted = 0
-    LEFT JOIN item_tags it 
-      ON it.item_remote_id = i.id AND it.deleted = 0
-    LEFT JOIN tags t 
-      ON t.id = it.tag_remote_id AND t.deleted = 0
-    LEFT JOIN item_images ii 
-      ON ii.item_remote_id = i.id AND ii.deleted = 0
+    LEFT JOIN metadata m ON m.item_id = i.id AND m.deleted = 0
+    LEFT JOIN item_tags it ON it.item_id = i.id AND it.deleted = 0
+    LEFT JOIN tags t ON t.id = it.tag_id AND t.deleted = 0
+    LEFT JOIN item_images ii ON ii.item_id = i.id AND ii.deleted = 0
     WHERE i.deleted = 0
     GROUP BY i.id
     ORDER BY i.updated_at DESC`
   );
 
   if (!Array.isArray(rows)) {
-    console.log('[db] No rows, returning empty array');
+    dbLog('No rows, returning empty array');
     return [];
   }
 
@@ -76,40 +82,37 @@ export async function addItem(data: NewItemData): Promise<WardrobeItem> {
   try {
     let itemId = -1;
 
-    // Use a transaction for safety
     await database.withTransactionAsync(async () => {
       // 1. Insert item
       const result = await database.runAsync(
-        `INSERT INTO items (name, description, category, created_at, updated_at, pending_sync)
-         VALUES (?, ?, ?, ?, ?, 1)`,
+        `INSERT INTO items (name, description, category, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?)`,
         [data.name, data.description, data.category, now, now]
       );
       itemId = result.lastInsertRowId;
 
-      let metaId: number | null = null;
       // 2. Insert metadata
       if (data.metadata && Object.keys(data.metadata).length > 0) {
         const metaJSON = JSON.stringify(data.metadata);
-        const metaResult = await database.runAsync(
-          `INSERT INTO metadata (item_remote_id, attributes, created_at, updated_at, pending_sync)
-           VALUES (?, ?, ?, ?, 1)`,
+        await database.runAsync(
+          `INSERT INTO metadata (item_id, attributes, created_at, updated_at)
+           VALUES (?, ?, ?, ?)`,
           [itemId, metaJSON, now, now]
         );
-        metaId = metaResult.lastInsertRowId;
       }
 
-      // 3. Insert tags (normalize & case-insensitive lookup to avoid duplicate tag rows)
+      // 3. Insert tags (normalize & case-insensitive lookup to avoid duplicates)
       if (data.tags && data.tags.length > 0) {
         const seen = new Set<string>();
-        for (let rawTag of data.tags) {
+        for (const rawTag of data.tags) {
           const tag = (rawTag || '').trim();
           if (!tag) continue;
           const lower = tag.toLowerCase();
-          if (seen.has(lower)) continue; // dedupe incoming for this insert
+          if (seen.has(lower)) continue;
           seen.add(lower);
 
           const existingRows = (await database.getAllAsync(
-            `SELECT id FROM tags WHERE LOWER(name) = LOWER(?) AND deleted = 0`,
+            `SELECT id FROM tags WHERE name = ? COLLATE NOCASE AND deleted = 0`,
             [tag]
           )) as { id: number }[];
 
@@ -118,45 +121,43 @@ export async function addItem(data: NewItemData): Promise<WardrobeItem> {
             tagId = existingRows[0].id;
           } else {
             const tagRes = await database.runAsync(
-              `INSERT INTO tags (name, created_at, updated_at, pending_sync)
-               VALUES (?, ?, ?, 1)`,
+              `INSERT INTO tags (name, created_at, updated_at)
+               VALUES (?, ?, ?)`,
               [tag, now, now]
             );
             tagId = tagRes.lastInsertRowId;
           }
 
           await database.runAsync(
-            `INSERT INTO item_tags (item_remote_id, tag_remote_id)
-             VALUES (?, ?)`,
-            [itemId, tagId]
+            `INSERT OR IGNORE INTO item_tags (item_id, tag_id, created_at, updated_at)
+             VALUES (?, ?, ?, ?)`,
+            [itemId, tagId, now, now]
           );
         }
       }
 
       // 4. Insert images
       if (data.images && data.images.length > 0) {
-        for (const uri of data.images) {
+        for (let i = 0; i < data.images.length; i++) {
+          const uri = data.images[i];
           await database.runAsync(
-            `INSERT INTO item_images (item_remote_id, local_uri, created_at, updated_at, pending_sync)
-             VALUES (?, ?, ?, ?, 1)`,
-            [itemId, uri, now, now]
+            `INSERT INTO item_images (item_id, local_uri, is_primary, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?)`,
+            [itemId, uri, i === 0 ? 1 : 0, now, now]
           );
         }
       }
     });
 
-    // After transaction, load and return the new item
     const newItem = await loadItem(itemId);
     if (!newItem) throw new Error('Failed to retrieve new item after insert');
 
     dbLog('addItem: inserted', { itemId, name: data.name });
-    try {
-      dbEvents.emit('itemsChanged', { type: 'add', id: itemId });
-    } catch { }
+    dbEvents.emit('itemsChanged', { type: 'add', id: itemId });
 
     return newItem;
   } catch (err) {
-    dbError('[db] Error adding item:', err, { payload: data });
+    dbError('Error adding item:', err, { payload: data });
     throw err;
   }
 }
@@ -185,7 +186,7 @@ export async function clearAll() {
 }
 
 /**
- * Marks an item and its related data as deleted.
+ * Marks an item and its related data as deleted (soft delete).
  * Returns the ID of the deleted item.
  */
 export async function deleteItem(itemId: number): Promise<number> {
@@ -194,32 +195,29 @@ export async function deleteItem(itemId: number): Promise<number> {
 
   try {
     await database.withTransactionAsync(async () => {
-      // ... (All the UPDATE deleted = 1 logic from your Version 1) ...
       await database.runAsync(
-        `UPDATE items SET deleted = 1, pending_sync = 1, updated_at = ? WHERE id = ?`,
+        `UPDATE items SET deleted = 1, updated_at = ? WHERE id = ?`,
         [now, itemId]
       );
       await database.runAsync(
-        `UPDATE metadata SET deleted = 1, pending_sync = 1, updated_at = ? WHERE item_remote_id = ?`,
+        `UPDATE metadata SET deleted = 1, updated_at = ? WHERE item_id = ?`,
         [now, itemId]
       );
       await database.runAsync(
-        `UPDATE item_tags SET deleted = 1 WHERE item_remote_id = ?`,
-        [itemId]
+        `UPDATE item_tags SET deleted = 1, updated_at = ? WHERE item_id = ?`,
+        [now, itemId]
       );
       await database.runAsync(
-        `UPDATE item_images SET deleted = 1, pending_sync = 1, updated_at = ?
-         WHERE item_remote_id = ?`,
+        `UPDATE item_images SET deleted = 1, updated_at = ? WHERE item_id = ?`,
         [now, itemId]
       );
     });
+    
     dbLog('deleteItem: marked deleted', { itemId });
-    try {
-      dbEvents.emit('itemsChanged', { type: 'delete', id: itemId });
-    } catch { }
+    dbEvents.emit('itemsChanged', { type: 'delete', id: itemId });
     return itemId;
   } catch (err) {
-    dbError('[db] Error deleting item:', err);
+    dbError('Error deleting item:', err);
     throw err;
   }
 }
@@ -235,117 +233,94 @@ export async function updateItem(
   const now = Date.now();
 
   try {
-    // Use a transaction
     await database.withTransactionAsync(async () => {
       // 1. Update main item
       await database.runAsync(
-        `UPDATE items
-         SET name = ?, description = ?, category = ?, updated_at = ?, pending_sync = 1
-         WHERE id = ?`,
+        `UPDATE items SET name = ?, description = ?, category = ?, updated_at = ? WHERE id = ?`,
         [data.name, data.description, data.category, now, itemId]
       );
 
       // 2. Update metadata (Upsert logic)
       const metadataStr = JSON.stringify(data.metadata);
       const existingMeta = (await database.getAllAsync(
-        `SELECT id FROM metadata WHERE item_remote_id = ?`,
+        `SELECT id FROM metadata WHERE item_id = ?`,
         [itemId]
       )) as { id: number }[];
 
-      let metaId: number;
       if (existingMeta.length > 0) {
-        metaId = existingMeta[0].id;
         await database.runAsync(
-          `UPDATE metadata
-           SET attributes = ?, updated_at = ?, pending_sync = 1, deleted = 0
-           WHERE id = ?`,
-          [metadataStr, now, metaId]
+          `UPDATE metadata SET attributes = ?, updated_at = ?, deleted = 0 WHERE id = ?`,
+          [metadataStr, now, existingMeta[0].id]
         );
       } else {
-        const metaRes = await database.runAsync(
-          `INSERT INTO metadata (item_remote_id, attributes, created_at, updated_at, pending_sync)
-           VALUES (?, ?, ?, ?, 1)`,
+        await database.runAsync(
+          `INSERT INTO metadata (item_id, attributes, created_at, updated_at)
+           VALUES (?, ?, ?, ?)`,
           [itemId, metadataStr, now, now]
         );
-        metaId = metaRes.lastInsertRowId;
       }
 
-      // 3. Update tags (normalize incoming tags, dedupe, case-insensitive lookup)
+      // 3. Update tags (normalize, dedupe, case-insensitive)
       const incomingTags = Array.isArray(data.tags)
         ? Array.from(
-          new Set(
-            data.tags
-              .map((t: string) => (t || '').trim())
-              .filter((t: string) => t.length > 0)
+            new Set(
+              data.tags
+                .map((t: string) => (t || '').trim())
+                .filter((t: string) => t.length > 0)
+            )
           )
-        )
         : [];
 
       const existingTagRows = (await database.getAllAsync(
-        `SELECT it.id, it.tag_remote_id, t.name as tag_name, LOWER(t.name) as tag_name_lower
+        `SELECT it.id, it.tag_id, t.name as tag_name
          FROM item_tags it
-         JOIN tags t ON t.id = it.tag_remote_id
-         WHERE it.item_remote_id = ? AND it.deleted = 0`,
+         JOIN tags t ON t.id = it.tag_id
+         WHERE it.item_id = ? AND it.deleted = 0`,
         [itemId]
-      )) as { id: number; tag_remote_id: number; tag_name: string; tag_name_lower: string }[];
-
-      const newTagIds: number[] = [];
+      )) as { id: number; tag_id: number; tag_name: string }[];
 
       const incomingLowerSet = new Set(incomingTags.map((t: string) => t.toLowerCase()));
+      const existingTagIds = new Set(existingTagRows.map((r) => r.tag_id));
 
       for (const tag of incomingTags) {
-        let tagId: number;
-
-        // Case-insensitive search for existing tag to avoid duplicates
+        // Find or create tag
         const existingTags = (await database.getAllAsync(
-          `SELECT id FROM tags WHERE LOWER(name) = LOWER(?) AND deleted = 0`,
+          `SELECT id FROM tags WHERE name = ? COLLATE NOCASE AND deleted = 0`,
           [tag]
         )) as { id: number }[];
 
+        let tagId: number;
         if (existingTags.length > 0) {
           tagId = existingTags[0].id;
         } else {
           const tagRes = await database.runAsync(
-            `INSERT INTO tags (name, created_at, updated_at, pending_sync)
-             VALUES (?, ?, ?, 1)`,
+            `INSERT INTO tags (name, created_at, updated_at) VALUES (?, ?, ?)`,
             [tag, now, now]
           );
           tagId = tagRes.lastInsertRowId;
         }
 
-        // Check if this tag is already linked to the item (by tag_remote_id)
-        const existingTagLink = existingTagRows.find((r) => r.tag_remote_id === tagId);
-
-        if (existingTagLink) {
-          newTagIds.push(existingTagLink.id); // Keep existing link
-        } else {
-          const linkRes = await database.runAsync(
-            `INSERT INTO item_tags (item_remote_id, tag_remote_id, pending_sync, created_at, updated_at)
-             VALUES (?, ?, 1, ?, ?)`,
+        // Link tag to item if not already linked
+        if (!existingTagIds.has(tagId)) {
+          await database.runAsync(
+            `INSERT OR IGNORE INTO item_tags (item_id, tag_id, created_at, updated_at)
+             VALUES (?, ?, ?, ?)`,
             [itemId, tagId, now, now]
           );
-          newTagIds.push(linkRes.lastInsertRowId);
         }
       }
 
-      // Soft-delete tags that were removed: compare by tag name (case-insensitive)
-      const removedTagIds = existingTagRows
-        .filter((r) => !incomingLowerSet.has((r.tag_name_lower || '').toLowerCase()))
+      // Soft-delete removed tags
+      const removedTagLinkIds = existingTagRows
+        .filter((r) => !incomingLowerSet.has(r.tag_name.toLowerCase()))
         .map((r) => r.id);
 
-      if (removedTagIds.length > 0) {
+      if (removedTagLinkIds.length > 0) {
         await database.runAsync(
-          `UPDATE item_tags
-           SET deleted = 1, pending_sync = 1, updated_at = ?
-           WHERE id IN (${removedTagIds.join(',')})`,
+          `UPDATE item_tags SET deleted = 1, updated_at = ? WHERE id IN (${removedTagLinkIds.join(',')})`,
           [now]
         );
       }
-
-      // Debugging/logging: show what changed
-      try {
-        dbLog('updateItem tags debug', { itemId, incomingTags, existingTagRows, newTagIds, removedTagIds });
-      } catch { }
 
       // 4. Update images (Upsert/Soft Delete)
       const incomingImages = Array.isArray(data.images)
@@ -354,18 +329,17 @@ export async function updateItem(
       const incomingImgSet = new Set(incomingImages);
 
       const existingImageRows = (await database.getAllAsync(
-        `SELECT id, local_uri FROM item_images WHERE item_remote_id = ? AND deleted = 0`,
+        `SELECT id, local_uri FROM item_images WHERE item_id = ? AND deleted = 0`,
         [itemId]
       )) as { id: number; local_uri: string }[];
 
       // Add new images
       for (const uri of incomingImages) {
-        // Simple check if this exact URI exists for this item
         const exists = existingImageRows.find((r) => r.local_uri === uri);
         if (!exists) {
           await database.runAsync(
-            `INSERT INTO item_images (item_remote_id, local_uri, created_at, updated_at, pending_sync)
-             VALUES (?, ?, ?, ?, 1)`,
+            `INSERT INTO item_images (item_id, local_uri, created_at, updated_at)
+             VALUES (?, ?, ?, ?)`,
             [itemId, uri, now, now]
           );
         }
@@ -378,50 +352,21 @@ export async function updateItem(
 
       if (removedImageIds.length > 0) {
         await database.runAsync(
-          `UPDATE item_images
-           SET deleted = 1, pending_sync = 1, updated_at = ?
-           WHERE id IN (${removedImageIds.join(',')})`,
+          `UPDATE item_images SET deleted = 1, updated_at = ? WHERE id IN (${removedImageIds.join(',')})`,
           [now]
         );
       }
     });
 
-    // After transaction, load and return the updated item
     const updatedItem = await loadItem(itemId);
     if (!updatedItem) throw new Error('Failed to retrieve item after update');
 
-    // Debug: log the canonical updated item so we can verify tags/meta in the DB
-    try {
-      dbLog('updateItem: updated', { itemId });
-      dbLog('updateItem: canonicalItem', updatedItem);
-    } catch { }
-
-    // Extra debug: dump all item_tags rows for this item and the associated tags rows
-    try {
-      const itemTagRows = await database.getAllAsync(
-        `SELECT * FROM item_tags WHERE item_remote_id = ? ORDER BY id`,
-        [itemId]
-      );
-      dbLog('updateItem: item_tag rows (all)', itemTagRows);
-
-      // Collect tag ids referenced by these rows
-      const tagIds = Array.from(new Set((itemTagRows || []).map((r: any) => r.tag_remote_id))).filter(Boolean);
-      if (tagIds.length > 0) {
-        const tagsRows = await database.getAllAsync(
-          `SELECT * FROM tags WHERE id IN (${tagIds.join(',')}) ORDER BY id`
-        );
-        dbLog('updateItem: tags rows for item', tagsRows);
-      }
-    } catch (e) {
-      dbError('updateItem: debug dump failed', e);
-    }
-    try {
-      dbEvents.emit('itemsChanged', { type: 'update', id: itemId });
-    } catch { }
+    dbLog('updateItem: updated', { itemId });
+    dbEvents.emit('itemsChanged', { type: 'update', id: itemId });
 
     return updatedItem;
   } catch (err) {
-    dbError(`[db] Error updating item ${itemId}:`, err);
+    dbError(`Error updating item ${itemId}:`, err);
     throw err;
   }
 }
