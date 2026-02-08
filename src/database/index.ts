@@ -1,13 +1,15 @@
 // src/database/index.ts
 
 import * as SQLite from 'expo-sqlite';
-import { CREATE_TABLE_STATEMENTS } from './schema';
+import { migrateDatabase, CURRENT_SCHEMA_VERSION } from './migrations';
+import { dbLog, dbError } from '../lib/logger';
 
 let db: SQLite.SQLiteDatabase | null = null;
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
+let migrationResult: { fromVersion: number; toVersion: number; migrationsRun: number } | null = null;
 
-// Lightweight event emitter for DB layer (optional: non-React listeners)
-type DBEvent = 'dbReady' | 'itemsChanged';
+// Lightweight event emitter for DB layer
+type DBEvent = 'dbReady' | 'itemsChanged' | 'migrationStart' | 'migrationComplete';
 const listeners: { [K in DBEvent]?: ((payload?: any) => void)[] } = {};
 
 export const dbEvents = {
@@ -28,19 +30,32 @@ export const dbEvents = {
 };
 
 /**
- * Initialize the SQLite database (only once).
+ * Initialize the SQLite database and run migrations.
  */
 export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
   if (db) return db;
 
   try {
+    dbLog('Opening database...');
     db = await SQLite.openDatabaseAsync('wardrobe.db');
-    await db.execAsync(CREATE_TABLE_STATEMENTS);
-    console.log('[db] initialized');
+    
+    // Run migrations
+    dbLog('Running migrations...');
+    dbEvents.emit('migrationStart');
+    
+    migrationResult = await migrateDatabase(db);
+    
+    dbEvents.emit('migrationComplete', migrationResult);
+    dbLog(`Database initialized (schema v${CURRENT_SCHEMA_VERSION})`);
+    
+    if (migrationResult.migrationsRun > 0) {
+      dbLog(`Ran ${migrationResult.migrationsRun} migration(s): v${migrationResult.fromVersion} -> v${migrationResult.toVersion}`);
+    }
+    
     dbEvents.emit('dbReady');
     return db;
   } catch (err: unknown) {
-    console.error('[db] failed to initialize:', err);
+    dbError('Failed to initialize database:', err);
 
     try {
       if (db && typeof (db as any).closeAsync === 'function') {
@@ -50,6 +65,7 @@ export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
       // ignore cleanup errors
     } finally {
       db = null;
+      dbPromise = null;
     }
 
     throw err;
@@ -58,15 +74,28 @@ export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
 
 /**
  * Get or initialize the shared DB instance.
- * This function always resolves to a valid SQLiteDatabase.
  */
 export function getDB(): Promise<SQLite.SQLiteDatabase> {
   if (db) return Promise.resolve(db);
 
   if (!dbPromise) {
-    console.warn('[db] not initialized, initializing...');
+    dbLog('Database not initialized, initializing...');
     dbPromise = initDatabase();
   }
 
   return dbPromise;
+}
+
+/**
+ * Get migration result (available after init)
+ */
+export function getMigrationResult() {
+  return migrationResult;
+}
+
+/**
+ * Get current schema version
+ */
+export function getSchemaVersion() {
+  return CURRENT_SCHEMA_VERSION;
 }
