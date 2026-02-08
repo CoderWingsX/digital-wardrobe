@@ -3,14 +3,14 @@
 import { StyleSheet } from 'react-native';
 import { ThemeColors } from '../../contexts/ThemeContext';
 
-export const createStyles = (colors: ThemeColors) => StyleSheet.create({
+export const createStyles = (colors: ThemeColors, bottomInset: number = 0) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.surface,
   },
   content: {
     padding: 16,
-    paddingBottom: 32,
+    paddingBottom: bottomInset + 32,
   },
   section: {
     backgroundColor: colors.card,

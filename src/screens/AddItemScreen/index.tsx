@@ -12,6 +12,7 @@ import {
   Platform,
   TextInput as RNTextInput,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDatabase } from '../../contexts/DatabaseContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import Toast from 'react-native-toast-message';
@@ -30,7 +31,8 @@ type AddItemScreenNavigationProp = NativeStackNavigationProp<
 export default function AddItemScreen() {
   const { addItemOptimistic } = useDatabase();
   const { colors } = useTheme();
-  const styles = createStyles(colors);
+  const insets = useSafeAreaInsets();
+  const styles = createStyles(colors, insets.bottom);
   const scrollViewRef = useRef<ScrollView>(null);
   const tagsInputRef = useRef<RNTextInput>(null);
   const [name, setName] = useState('');

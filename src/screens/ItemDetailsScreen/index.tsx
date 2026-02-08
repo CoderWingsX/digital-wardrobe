@@ -15,6 +15,7 @@ import {
   Dimensions,
   FlatList,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useDatabase } from '../../contexts/DatabaseContext';
@@ -41,7 +42,8 @@ export default function ItemDetailsScreen() {
   const route = useRoute<ItemDetailsRouteProp>();
   const navigation = useNavigation<ItemDetailsNavigationProp>();
   const { colors } = useTheme();
-  const styles = createStyles(colors);
+  const insets = useSafeAreaInsets();
+  const styles = createStyles(colors, insets.bottom);
   const { itemId } = route.params;
 
   const [item, setItem] = useState<WardrobeItem | null>(null);

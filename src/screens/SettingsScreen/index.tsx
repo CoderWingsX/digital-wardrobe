@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Share,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDatabase } from '../../contexts/DatabaseContext';
 import { useTheme, ThemeMode } from '../../contexts/ThemeContext';
 import {
@@ -31,7 +32,8 @@ import { createStyles } from './styles';
 export default function SettingsScreen() {
   const { schemaVersion, items, categories, allTags, refresh } = useDatabase();
   const { mode, setMode, colors } = useTheme();
-  const styles = createStyles(colors);
+  const insets = useSafeAreaInsets();
+  const styles = createStyles(colors, insets.bottom);
   const [loading, setLoading] = useState<string | null>(null);
   const [stats, setStats] = useState<{
     itemCount: number;

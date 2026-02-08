@@ -3,8 +3,8 @@
 import { StyleSheet, Dimensions } from 'react-native';
 import { ThemeColors } from '../../contexts/ThemeContext';
 
-export const createStyles = (colors: ThemeColors) => StyleSheet.create({
-  container: { padding: 20, backgroundColor: colors.background },
+export const createStyles = (colors: ThemeColors, bottomInset: number = 0) => StyleSheet.create({
+  container: { padding: 20, paddingBottom: bottomInset + 20, backgroundColor: colors.background },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
   loading: { marginTop: 10, fontSize: 18, textAlign: 'center', color: colors.text },
   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 5, color: colors.text },

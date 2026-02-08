@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { StatusBar } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 import { DatabaseProvider, useDatabase } from './src/contexts/DatabaseContext';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
@@ -44,14 +45,16 @@ function AppContent() {
 
 export default function App() {
   return (
-    <ErrorBoundary>
-      <ActionSheetProvider>
-        <ThemeProvider>
-          <DatabaseProvider>
-            <AppContent />
-          </DatabaseProvider>
-        </ThemeProvider>
-      </ActionSheetProvider>
-    </ErrorBoundary>
+    <SafeAreaProvider>
+      <ErrorBoundary>
+        <ActionSheetProvider>
+          <ThemeProvider>
+            <DatabaseProvider>
+              <AppContent />
+            </DatabaseProvider>
+          </ThemeProvider>
+        </ActionSheetProvider>
+      </ErrorBoundary>
+    </SafeAreaProvider>
   );
 }
