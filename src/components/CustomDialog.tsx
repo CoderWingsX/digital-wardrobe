@@ -1,6 +1,6 @@
 // src/components/CustomDialog.tsx
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   Modal,
   View,
@@ -8,8 +8,11 @@ import {
   TouchableOpacity,
   StyleSheet,
   TouchableWithoutFeedback,
+  Animated,
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
+
+const ANIMATION_DURATION = 200;
 
 export interface DialogButton {
   label: string;
@@ -33,6 +36,28 @@ export default function CustomDialog({
   onDismiss,
 }: Props) {
   const { colors, isDark } = useTheme();
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: ANIMATION_DURATION,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: ANIMATION_DURATION,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      fadeAnim.setValue(0);
+      scaleAnim.setValue(0.9);
+    }
+  }, [visible, fadeAnim, scaleAnim]);
 
   const getButtonTextColor = (style?: 'default' | 'cancel' | 'destructive') => {
     if (style === 'destructive') return '#FF3B30';
@@ -44,13 +69,17 @@ export default function CustomDialog({
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType="none"
       onRequestClose={onDismiss}
     >
       <TouchableWithoutFeedback onPress={onDismiss}>
-        <View style={styles.overlay}>
+        <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
           <TouchableWithoutFeedback>
-            <View style={[styles.dialog, { backgroundColor: isDark ? '#2C2C2E' : '#fff' }]}>
+            <Animated.View style={[
+              styles.dialog,
+              { backgroundColor: isDark ? '#2C2C2E' : '#fff' },
+              { transform: [{ scale: scaleAnim }] },
+            ]}>
               <View style={styles.content}>
                 <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
                 {message && (
@@ -81,9 +110,9 @@ export default function CustomDialog({
                   </TouchableOpacity>
                 ))}
               </View>
-            </View>
+            </Animated.View>
           </TouchableWithoutFeedback>
-        </View>
+        </Animated.View>
       </TouchableWithoutFeedback>
     </Modal>
   );
