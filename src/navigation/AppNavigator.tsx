@@ -18,6 +18,9 @@ export default function AppNavigator() {
       <Stack.Navigator
         screenOptions={{
           animation: 'ios_from_right',
+          contentStyle: { backgroundColor: '#fff' },
+          headerStyle: { backgroundColor: '#fff' },
+          animationDuration: 250,
         }}
       >
         <Stack.Screen
