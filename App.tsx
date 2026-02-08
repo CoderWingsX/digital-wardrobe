@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { StatusBar } from 'react-native';
+import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 import { DatabaseProvider, useDatabase } from './src/contexts/DatabaseContext';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import AppNavigator from './src/navigation/AppNavigator';
@@ -44,11 +45,13 @@ function AppContent() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider>
-        <DatabaseProvider>
-          <AppContent />
-        </DatabaseProvider>
-      </ThemeProvider>
+      <ActionSheetProvider>
+        <ThemeProvider>
+          <DatabaseProvider>
+            <AppContent />
+          </DatabaseProvider>
+        </ThemeProvider>
+      </ActionSheetProvider>
     </ErrorBoundary>
   );
 }

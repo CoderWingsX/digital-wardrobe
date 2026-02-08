@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Button, Alert } from 'react-native';
+import { useActionSheet } from '@expo/react-native-action-sheet';
 import * as ImagePicker from 'expo-image-picker';
 
 type Props = {
@@ -11,6 +12,8 @@ export default function ImagePickerButton({
     onImageSelected,
     title = 'Pick an Image',
 }: Props) {
+    const { showActionSheetWithOptions } = useActionSheet();
+
     const pickFromLibrary = async () => {
         try {
             const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -64,15 +67,25 @@ export default function ImagePickerButton({
     };
 
     const handlePress = () => {
-        Alert.alert(
-            'Select Image',
-            'Choose an option',
-            [
-                { text: 'Take Photo', onPress: pickFromCamera },
-                { text: 'Choose from Library', onPress: pickFromLibrary },
-                { text: 'Cancel', style: 'cancel' },
-            ],
-            { cancelable: true }
+        const options = ['Take Photo', 'Choose from Library', 'Cancel'];
+        const cancelButtonIndex = 2;
+
+        showActionSheetWithOptions(
+            {
+                options,
+                cancelButtonIndex,
+                title: 'Select Image',
+            },
+            (selectedIndex) => {
+                switch (selectedIndex) {
+                    case 0:
+                        pickFromCamera();
+                        break;
+                    case 1:
+                        pickFromLibrary();
+                        break;
+                }
+            }
         );
     };
 
