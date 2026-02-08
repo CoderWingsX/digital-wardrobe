@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface Props {
   message?: string;
@@ -17,14 +18,16 @@ export default function LoadingScreen({
   showMigration = false,
   migrationInfo 
 }: Props) {
+  const { colors } = useTheme();
+
   return (
-    <View style={styles.container}>
-      <ActivityIndicator size="large" color="#007AFF" />
-      <Text style={styles.message}>{message}</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <ActivityIndicator size="large" color={colors.primary} />
+      <Text style={[styles.message, { color: colors.textSecondary }]}>{message}</Text>
       
       {showMigration && migrationInfo && (
-        <View style={styles.migrationInfo}>
-          <Text style={styles.migrationText}>
+        <View style={[styles.migrationInfo, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.migrationText, { color: colors.textMuted }]}>
             Upgrading database: v{migrationInfo.fromVersion} → v{migrationInfo.toVersion}
           </Text>
         </View>
@@ -36,7 +39,6 @@ export default function LoadingScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
@@ -44,16 +46,13 @@ const styles = StyleSheet.create({
   message: {
     marginTop: 16,
     fontSize: 16,
-    color: '#666',
   },
   migrationInfo: {
     marginTop: 12,
     padding: 8,
-    backgroundColor: '#f0f0f0',
     borderRadius: 6,
   },
   migrationText: {
     fontSize: 12,
-    color: '#888',
   },
 });

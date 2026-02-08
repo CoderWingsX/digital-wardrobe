@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface Props {
   icon?: string;
@@ -18,13 +19,15 @@ export default function EmptyState({
   actionLabel, 
   onAction 
 }: Props) {
+  const { colors } = useTheme();
+
   return (
     <View style={styles.container}>
       <Text style={styles.icon}>{icon}</Text>
-      <Text style={styles.title}>{title}</Text>
-      {message && <Text style={styles.message}>{message}</Text>}
+      <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+      {message && <Text style={[styles.message, { color: colors.textMuted }]}>{message}</Text>}
       {actionLabel && onAction && (
-        <TouchableOpacity style={styles.button} onPress={onAction}>
+        <TouchableOpacity style={[styles.button, { backgroundColor: colors.primary }]} onPress={onAction}>
           <Text style={styles.buttonText}>{actionLabel}</Text>
         </TouchableOpacity>
       )}
@@ -46,19 +49,16 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#333',
     textAlign: 'center',
     marginBottom: 8,
   },
   message: {
     fontSize: 14,
-    color: '#888',
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 24,
   },
   button: {
-    backgroundColor: '#007AFF',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
