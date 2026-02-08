@@ -10,6 +10,7 @@ import {
   TextInput,
   TouchableWithoutFeedback,
   Keyboard,
+  ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDatabase } from '../../contexts/DatabaseContext';
@@ -175,14 +176,18 @@ export default function HomeScreen() {
           />
 
           {showSuggestions && suggestions.length > 0 && (
-            <View style={styles.suggestionsContainer}>
-              <FlatList
-                data={suggestions}
-                keyExtractor={(item, index) => index.toString()}
+            <View 
+              style={styles.suggestionsContainer}
+              onStartShouldSetResponder={() => true}
+            >
+              <ScrollView
                 nestedScrollEnabled={true}
                 keyboardShouldPersistTaps="handled"
-                renderItem={({ item }) => (
+                showsVerticalScrollIndicator={true}
+              >
+                {suggestions.map((item, index) => (
                   <TouchableOpacity
+                    key={index}
                     style={styles.suggestionItem}
                     onPress={() => handleSuggestionPress(item)}
                   >
@@ -191,8 +196,8 @@ export default function HomeScreen() {
                     </Text>
                     <Text style={styles.suggestionType}>{item.type}</Text>
                   </TouchableOpacity>
-                )}
-              />
+                ))}
+              </ScrollView>
             </View>
           )}
         </View>
