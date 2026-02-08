@@ -14,9 +14,10 @@ import {
 import { useDatabase } from '../../contexts/DatabaseContext';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList, WardrobeItem } from '../../types';
+import { RootStackParamList } from '../../types';
 import Toast from 'react-native-toast-message';
 import { getLocalImageUri } from '../../lib/filesystem';
+import EmptyState from '../../components/EmptyState';
 import styles from './styles';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<
@@ -188,45 +189,64 @@ export default function HomeScreen() {
           )}
         </View>
 
-        <FlatList
-          style={styles.list}
-          data={displayItems}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.item}
-              onPress={() => {
-                setShowSuggestions(false);
-                navigation.navigate('ItemDetails', { itemId: item.id });
-              }}
-            >
-              {item.images && item.images.length > 0 ? (
-                <Image
-                  source={{ uri: getLocalImageUri(item.images[0]) }}
-                  style={styles.itemImage}
-                />
-              ) : (
-                <View
-                  style={[
-                    styles.itemImage,
-                    { justifyContent: 'center', alignItems: 'center' },
-                  ]}
-                >
-                  <Text style={{ fontSize: 24 }}>👕</Text>
+        {items.length === 0 ? (
+          <EmptyState
+            icon="👗"
+            title="Your wardrobe is empty"
+            message="Start by adding your first clothing item"
+            actionLabel="Add First Item"
+            onAction={() => navigation.navigate('AddItem')}
+          />
+        ) : displayItems.length === 0 ? (
+          <EmptyState
+            icon="🔍"
+            title="No results found"
+            message={`No items match "${searchQuery}"`}
+          />
+        ) : (
+          <FlatList
+            style={styles.list}
+            data={displayItems}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={styles.item}
+                onPress={() => {
+                  setShowSuggestions(false);
+                  navigation.navigate('ItemDetails', { itemId: item.id });
+                }}
+                accessibilityLabel={`${item.name}, ${item.category}`}
+                accessibilityRole="button"
+              >
+                {item.images && item.images.length > 0 ? (
+                  <Image
+                    source={{ uri: getLocalImageUri(item.images[0]) }}
+                    style={styles.itemImage}
+                    accessibilityLabel={`Image of ${item.name}`}
+                  />
+                ) : (
+                  <View
+                    style={[
+                      styles.itemImage,
+                      { justifyContent: 'center', alignItems: 'center' },
+                    ]}
+                  >
+                    <Text style={{ fontSize: 24 }}>👕</Text>
+                  </View>
+                )}
+                <View style={styles.itemContent}>
+                  <Text style={styles.title} numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                  <Text style={styles.category}>{item.category}</Text>
+                  <Text style={styles.description} numberOfLines={2}>
+                    {item.description}
+                  </Text>
                 </View>
-              )}
-              <View style={styles.itemContent}>
-                <Text style={styles.title} numberOfLines={1}>
-                  {item.name}
-                </Text>
-                <Text style={styles.category}>{item.category}</Text>
-                <Text style={styles.description} numberOfLines={2}>
-                  {item.description}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          )}
-        />
+              </TouchableOpacity>
+            )}
+          />
+        )}
       </View>
     </TouchableWithoutFeedback>
   );
