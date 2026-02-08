@@ -126,26 +126,37 @@ export default function AddItemScreen() {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: 40 }}
       >
+        <Text style={styles.label}>
+          Item Name <Text style={styles.required}>*</Text>
+        </Text>
         <TextInput
           style={styles.input}
-          placeholder="Item Name"
+          placeholder="Enter item name"
           value={name}
           onChangeText={setName}
         />
+        
+        <Text style={styles.label}>
+          Description <Text style={styles.required}>*</Text>
+        </Text>
         <TextInput
           style={styles.input}
-          placeholder="Description"
+          placeholder="Enter description"
           value={description}
           onChangeText={setDescription}
         />
+        
+        <Text style={styles.label}>
+          Category <Text style={styles.required}>*</Text>
+        </Text>
         <TextInput
           style={styles.input}
-          placeholder="Category"
+          placeholder="Enter category"
           value={category}
           onChangeText={setCategory}
         />
 
-        <Text style={styles.sectionTitle}>Metadata:</Text>
+        <Text style={styles.sectionTitle}>Metadata</Text>
         {metadata.map((m, idx) => (
           <View key={idx} style={styles.metaRow}>
             <TextInput
@@ -169,7 +180,7 @@ export default function AddItemScreen() {
         ))}
         <Button title="+ Add Metadata Field" onPress={addMetadataField} />
 
-        <Text style={styles.sectionTitle}>Images:</Text>
+        <Text style={styles.sectionTitle}>Images</Text>
         <ScrollView horizontal style={{ marginVertical: 10 }}>
           {images.map((uri, idx) => (
             <Image
@@ -181,7 +192,7 @@ export default function AddItemScreen() {
         </ScrollView>
         <ImagePickerButton onImageSelected={(uri) => setImages([...images, uri])} />
 
-        <Text style={styles.sectionTitle}>Tags:</Text>
+        <Text style={styles.sectionTitle}>Tags</Text>
         <TextInput
           ref={tagsInputRef}
           style={styles.input}
