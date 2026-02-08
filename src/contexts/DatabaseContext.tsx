@@ -7,7 +7,7 @@ import React, {
   useState,
   ReactNode,
 } from 'react';
-import { initDatabase } from '../database';
+import { initDatabase, getMigrationResult, getSchemaVersion } from '../database';
 import { WardrobeItem, NewItemData, UpdateItemData } from '../types';
 import {
   loadItems,
@@ -16,19 +16,31 @@ import {
   deleteItem as dbDeleteItem,
   clearAll as dbClearAll,
 } from '../database/queries';
+import { getCategories, getAllTags } from '../database/maintenance';
 import { dbEvents } from '../database';
 import { dbLog, dbError, uiLog } from '../lib/logger';
 
+type MigrationInfo = {
+  fromVersion: number;
+  toVersion: number;
+  migrationsRun: number;
+};
+
 type DBContextValue = {
   dbReady: boolean;
+  dbError: Error | null;
   loading: boolean;
+  initializing: boolean;
+  migrationInfo: MigrationInfo | null;
+  schemaVersion: number;
   items: WardrobeItem[];
+  categories: string[];
+  allTags: string[];
   refresh: () => Promise<void>;
+  refreshCategories: () => Promise<void>;
+  refreshTags: () => Promise<void>;
   addItemOptimistic: (data: NewItemData) => Promise<WardrobeItem>;
-  updateItemOptimistic: (
-    id: number,
-    data: UpdateItemData
-  ) => Promise<WardrobeItem>;
+  updateItemOptimistic: (id: number, data: UpdateItemData) => Promise<WardrobeItem>;
   deleteItemOptimistic: (id: number) => Promise<void>;
   clearAllOptimistic: () => Promise<void>;
 };
@@ -37,46 +49,74 @@ const DatabaseContext = createContext<DBContextValue | undefined>(undefined);
 
 export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
   const [dbReady, setDbReady] = useState(false);
-  const [loading, setLoading] = useState(true); // Start loading true
+  const [dbInitError, setDbInitError] = useState<Error | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [initializing, setInitializing] = useState(true);
+  const [migrationInfo, setMigrationInfo] = useState<MigrationInfo | null>(null);
   const [items, setItems] = useState<WardrobeItem[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [allTags, setAllTags] = useState<string[]>([]);
 
   // Initialize DB and load initial items
   useEffect(() => {
+    let mounted = true;
+
     (async () => {
       try {
         dbLog('Initializing database...');
+        setInitializing(true);
+        
         await initDatabase();
+        
+        if (!mounted) return;
+        
+        const migResult = getMigrationResult();
+        if (migResult) {
+          setMigrationInfo(migResult);
+          if (migResult.migrationsRun > 0) {
+            dbLog(`Migrations completed: v${migResult.fromVersion} -> v${migResult.toVersion}`);
+          }
+        }
+        
         setDbReady(true);
-        await refresh(); // Load initial data
+        setDbInitError(null);
+        
+        await refresh();
+        await refreshCategories();
+        await refreshTags();
+        
         dbLog('Database is ready.');
       } catch (e) {
         dbError('Error initializing database:', e);
+        if (mounted) {
+          setDbInitError(e instanceof Error ? e : new Error(String(e)));
+        }
+      } finally {
+        if (mounted) {
+          setInitializing(false);
+        }
       }
     })();
 
-    // Subscribe to DB-level events so cache can refresh when the DB changes
     const unsub = dbEvents.on('itemsChanged', async (payload) => {
+      if (!mounted) return;
       try {
         dbLog('dbEvents.itemsChanged received, refreshing cache', payload);
         await refresh();
+        await refreshCategories();
+        await refreshTags();
       } catch (e) {
         dbError('Error refreshing on dbEvents.itemsChanged:', e);
       }
     });
 
     return () => {
-      // Unsubscribe the event listener on unmount
+      mounted = false;
       try {
         if (typeof unsub === 'function') unsub();
       } catch { }
     };
   }, []);
-
-  // NOTE: We intentionally do not subscribe to dbEvents here for
-  // user-initiated writes because the optimistic helpers already
-  // reconcile state. dbEvents is useful for external processes
-  // (background sync), but it can cause redundant refreshes for
-  // normal flows.
 
   const refresh = async () => {
     setLoading(true);
@@ -84,9 +124,27 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
       const fresh = await loadItems();
       setItems(fresh);
     } catch (e) {
-      console.error('[db] Error refreshing items:', e);
+      dbError('Error refreshing items:', e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const refreshCategories = async () => {
+    try {
+      const cats = await getCategories();
+      setCategories(cats);
+    } catch (e) {
+      dbError('Error refreshing categories:', e);
+    }
+  };
+
+  const refreshTags = async () => {
+    try {
+      const tags = await getAllTags();
+      setAllTags(tags);
+    } catch (e) {
+      dbError('Error refreshing tags:', e);
     }
   };
 
@@ -208,9 +266,17 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
     <DatabaseContext.Provider
       value={{
         dbReady,
+        dbError: dbInitError,
         loading,
+        initializing,
+        migrationInfo,
+        schemaVersion: getSchemaVersion(),
         items,
+        categories,
+        allTags,
         refresh,
+        refreshCategories,
+        refreshTags,
         addItemOptimistic,
         updateItemOptimistic,
         deleteItemOptimistic,
