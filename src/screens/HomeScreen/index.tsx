@@ -221,6 +221,7 @@ export default function HomeScreen() {
             style={styles.list}
             data={displayItems}
             keyExtractor={(item) => item.id.toString()}
+            scrollEnabled={!showSuggestions}
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={styles.item}
