@@ -3,7 +3,7 @@
 import * as SQLite from 'expo-sqlite';
 import { dbLog, dbError } from '../lib/logger';
 
-export const CURRENT_SCHEMA_VERSION = 1;
+export const CURRENT_SCHEMA_VERSION = 2;
 
 interface Migration {
   version: number;
@@ -31,6 +31,32 @@ const MIGRATIONS: Migration[] = [
         // Existing DB - migrate from old schema
         await migrateFromOldSchema(db);
       }
+    },
+  },
+  {
+    version: 2,
+    description: 'Create items_full view',
+    up: async (db: SQLite.SQLiteDatabase) => {
+      dbLog('Creating items_full view...');
+      await db.execAsync(`
+        DROP VIEW IF EXISTS items_full;
+        
+        CREATE VIEW items_full AS
+        SELECT 
+          i.id, i.name, i.category, i.description, i.created_at, i.updated_at,
+          m.attributes AS metadata,
+          GROUP_CONCAT(DISTINCT t.name) AS tags,
+          GROUP_CONCAT(DISTINCT ii.local_uri) AS images
+        FROM items i
+        LEFT JOIN metadata m ON m.item_id = i.id AND m.deleted = 0
+        LEFT JOIN item_tags it ON it.item_id = i.id AND it.deleted = 0
+        LEFT JOIN tags t ON t.id = it.tag_id AND t.deleted = 0
+        LEFT JOIN item_images ii ON ii.item_id = i.id AND ii.deleted = 0
+        WHERE i.deleted = 0
+        GROUP BY i.id
+        ORDER BY i.updated_at DESC;
+      `);
+      dbLog('items_full view created');
     },
   },
 ];
