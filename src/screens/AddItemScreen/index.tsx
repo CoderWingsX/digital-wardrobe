@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Alert,
   View,
@@ -10,12 +10,13 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
+  TextInput as RNTextInput,
 } from 'react-native';
 import { useDatabase } from '../../contexts/DatabaseContext';
 import Toast from 'react-native-toast-message';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList, WardrobeItem } from '../../types';
+import { RootStackParamList } from '../../types';
 import ImagePickerButton from '../../components/ImagePickerButton';
 import { saveImageLocally, getLocalImageUri } from '../../lib/filesystem';
 
@@ -27,6 +28,8 @@ import styles from './styles';
 
 export default function AddItemScreen() {
   const { addItemOptimistic } = useDatabase();
+  const scrollViewRef = useRef<ScrollView>(null);
+  const tagsInputRef = useRef<RNTextInput>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
@@ -119,6 +122,7 @@ export default function AddItemScreen() {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       <ScrollView 
+        ref={scrollViewRef}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: 40 }}
       >
@@ -179,10 +183,16 @@ export default function AddItemScreen() {
 
         <Text style={styles.sectionTitle}>Tags:</Text>
         <TextInput
+          ref={tagsInputRef}
           style={styles.input}
           placeholder="Tags (comma-separated)"
           value={tags}
           onChangeText={setTags}
+          onFocus={() => {
+            setTimeout(() => {
+              scrollViewRef.current?.scrollToEnd({ animated: true });
+            }, 100);
+          }}
         />
 
         <View
