@@ -179,6 +179,8 @@ export default function HomeScreen() {
               <FlatList
                 data={suggestions}
                 keyExtractor={(item, index) => index.toString()}
+                nestedScrollEnabled={true}
+                keyboardShouldPersistTaps="handled"
                 renderItem={({ item }) => (
                   <TouchableOpacity
                     style={styles.suggestionItem}
