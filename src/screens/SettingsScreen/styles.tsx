@@ -41,6 +41,7 @@ export const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 15,
     color: colors.textSecondary,
     flexShrink: 0,
+    maxWidth: '40%',
   },
   infoValue: {
     fontSize: 15,
