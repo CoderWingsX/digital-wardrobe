@@ -19,6 +19,7 @@ export type RootStackParamList = {
   Home: undefined;
   ItemDetails: { itemId: number };
   AddItem: undefined;
+  Settings: undefined;
 };
 
 // Type for adding a new item.
