@@ -32,7 +32,7 @@ export const createStyles = (colors: ThemeColors) => StyleSheet.create({
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
@@ -40,11 +40,15 @@ export const createStyles = (colors: ThemeColors) => StyleSheet.create({
   infoLabel: {
     fontSize: 15,
     color: colors.textSecondary,
+    flexShrink: 0,
   },
   infoValue: {
     fontSize: 15,
     fontWeight: '500',
     color: colors.text,
+    flex: 1,
+    textAlign: 'right',
+    marginLeft: 12,
   },
   infoHint: {
     fontSize: 13,
