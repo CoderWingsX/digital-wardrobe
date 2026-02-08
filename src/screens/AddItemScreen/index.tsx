@@ -21,6 +21,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types';
 import ImagePickerButton from '../../components/ImagePickerButton';
 import { saveImageLocally, getLocalImageUri } from '../../lib/filesystem';
+import CategoryPicker from '../../components/CategoryPicker';
+import TagInput from '../../components/TagInput';
 import { createStyles } from './styles';
 
 type AddItemScreenNavigationProp = NativeStackNavigationProp<
@@ -39,9 +41,14 @@ export default function AddItemScreen() {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [metadata, setMetadata] = useState<{ key: string; value: string }[]>(
-    []
+    [
+      { key: 'Color', value: '' },
+      { key: 'Size', value: '' },
+      { key: 'Brand', value: '' },
+      { key: 'Material', value: '' },
+    ]
   );
-  const [tags, setTags] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
   const [images, setImages] = useState<string[]>([]);
   const [multiAdd, setMultiAdd] = useState(false);
 
@@ -64,19 +71,18 @@ export default function AddItemScreen() {
   };
 
   async function handleAddItem() {
-    if (!name || !description || !category) {
+    if (!name || !category) {
       Alert.alert('Validation', 'Please fill in all required fields');
       return false;
     }
 
     try {
       const metaObj = Object.fromEntries(
-        metadata.filter((m) => m.key).map((m) => [m.key, m.value])
+        metadata
+          .filter((m) => m.key && m.value.trim() !== '') // Filter out empty values
+          .map((m) => [m.key, m.value])
       );
-      const tagArr = tags
-        .split(',')
-        .map((t) => t.trim())
-        .filter((t) => t.length > 0);
+      const tagArr = tags;
 
       // Save images permanently
       const savedImageUris: string[] = [];
@@ -107,8 +113,13 @@ export default function AddItemScreen() {
         setName('');
         setDescription('');
         setCategory('');
-        setMetadata([]);
-        setTags('');
+        setMetadata([
+          { key: 'Color', value: '' },
+          { key: 'Size', value: '' },
+          { key: 'Brand', value: '' },
+          { key: 'Material', value: '' },
+        ]);
+        setTags([]);
         setImages([]);
       } catch (err) {
         console.error(err);
@@ -121,12 +132,12 @@ export default function AddItemScreen() {
   }
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container} 
+    <KeyboardAvoidingView
+      style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
-      <ScrollView 
+      <ScrollView
         ref={scrollViewRef}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: 40 }}
@@ -141,9 +152,9 @@ export default function AddItemScreen() {
           value={name}
           onChangeText={setName}
         />
-        
+
         <Text style={styles.label}>
-          Description <Text style={styles.required}>*</Text>
+          Description
         </Text>
         <TextInput
           style={styles.input}
@@ -152,16 +163,11 @@ export default function AddItemScreen() {
           value={description}
           onChangeText={setDescription}
         />
-        
-        <Text style={styles.label}>
-          Category <Text style={styles.required}>*</Text>
-        </Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter category"
-          placeholderTextColor={colors.textMuted}
+
+        <CategoryPicker
           value={category}
-          onChangeText={setCategory}
+          onSelect={setCategory}
+          required
         />
 
         <Text style={styles.sectionTitle}>Metadata</Text>
@@ -202,18 +208,14 @@ export default function AddItemScreen() {
         </ScrollView>
         <ImagePickerButton onImageSelected={(uri) => setImages([...images, uri])} />
 
-        <Text style={styles.sectionTitle}>Tags</Text>
-        <TextInput
-          ref={tagsInputRef}
-          style={styles.input}
-          placeholder="Tags (comma-separated)"
-          placeholderTextColor={colors.textMuted}
-          value={tags}
-          onChangeText={setTags}
+        <TagInput
+          tags={tags}
+          onChangeTags={setTags}
           onFocus={() => {
+            // Wait longer for keyboard to open and layout to shift
             setTimeout(() => {
               scrollViewRef.current?.scrollToEnd({ animated: true });
-            }, 100);
+            }, 300);
           }}
         />
 

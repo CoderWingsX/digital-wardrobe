@@ -12,6 +12,16 @@ export const createStyles = (colors: ThemeColors) => StyleSheet.create({
   description: { fontSize: 16, fontStyle: 'italic', marginBottom: 15, color: colors.textSecondary },
   section: { marginBottom: 15 },
   sectionTitle: { fontWeight: 'bold', marginBottom: 5, color: colors.text },
+  label: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  required: {
+    color: colors.danger,
+    fontWeight: '600',
+  },
   input: {
     borderWidth: 1,
     borderColor: colors.inputBorder,
@@ -112,6 +122,26 @@ export const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   tagsText: {
     color: colors.text,
+  },
+  tagContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 5,
+  },
+  tagBubble: {
+    backgroundColor: colors.primary + '20',
+    borderColor: colors.primary + '40',
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  tagBubbleText: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: '500',
   },
   noDataText: {
     color: colors.textMuted,
