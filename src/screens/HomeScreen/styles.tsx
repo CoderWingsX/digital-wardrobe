@@ -72,7 +72,7 @@ export const createStyles = (colors: ThemeColors, bottomInset: number = 0) => St
     borderRadius: 8,
     borderWidth: 1,
     borderColor: colors.border,
-    height: 200,
+    maxHeight: 200,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
