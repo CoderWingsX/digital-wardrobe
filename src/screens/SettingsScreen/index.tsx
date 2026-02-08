@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Share,
 } from 'react-native';
+import Dialog from 'react-native-dialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDatabase } from '../../contexts/DatabaseContext';
 import { useTheme, ThemeMode } from '../../contexts/ThemeContext';
@@ -41,11 +42,21 @@ export default function SettingsScreen() {
     deletedItemCount: number;
   } | null>(null);
   const [testDataCount, setTestDataCount] = useState<number>(0);
+  const [loadTestDialogVisible, setLoadTestDialogVisible] = useState(false);
   const testDataInfo = getAvailableTestData();
 
   useEffect(() => {
     getTestDataCount().then(setTestDataCount);
   }, [items]);
+
+  const handleLoadTestData = async (withImages: boolean) => {
+    setLoadTestDialogVisible(false);
+    await runWithLoading('loadTest', async () => {
+      const result = await loadTestData(undefined, withImages);
+      await refresh();
+      Alert.alert('Test Data Loaded', `Loaded: ${result.loaded}\nFailed: ${result.failed}`);
+    });
+  };
 
   const runWithLoading = async (key: string, fn: () => Promise<void>) => {
     setLoading(key);
@@ -284,35 +295,19 @@ export default function SettingsScreen() {
           <Text style={styles.infoLabel}>Categories</Text>
           <Text style={styles.infoValue}>{testDataInfo.categories.join(', ')}</Text>
         </View>
-        {renderButton('loadTest', `Load Test Data (~${Math.ceil(testDataInfo.total / 2)} items)`, async () => {
-          Alert.alert(
-            'Load Test Data',
-            'This will download images and add test items to your wardrobe. Continue?',
-            [
-              { text: 'Cancel', style: 'cancel' },
-              {
-                text: 'Load (with images)',
-                onPress: async () => {
-                  await runWithLoading('loadTest', async () => {
-                    const result = await loadTestData(undefined, true);
-                    await refresh();
-                    Alert.alert('Test Data Loaded', `Loaded: ${result.loaded}\nFailed: ${result.failed}`);
-                  });
-                },
-              },
-              {
-                text: 'Load (no images)',
-                onPress: async () => {
-                  await runWithLoading('loadTest', async () => {
-                    const result = await loadTestData(undefined, false);
-                    await refresh();
-                    Alert.alert('Test Data Loaded', `Loaded: ${result.loaded}\nFailed: ${result.failed}`);
-                  });
-                },
-              },
-            ]
-          );
+        {renderButton('loadTest', `Load Test Data (~${Math.ceil(testDataInfo.total / 2)} items)`, () => {
+          setLoadTestDialogVisible(true);
         })}
+        
+        <Dialog.Container visible={loadTestDialogVisible}>
+          <Dialog.Title>Load Test Data</Dialog.Title>
+          <Dialog.Description>
+            This will download images and add test items to your wardrobe. Continue?
+          </Dialog.Description>
+          <Dialog.Button label="Cancel" onPress={() => setLoadTestDialogVisible(false)} />
+          <Dialog.Button label="Load (no images)" onPress={() => handleLoadTestData(false)} />
+          <Dialog.Button label="Load (with images)" onPress={() => handleLoadTestData(true)} />
+        </Dialog.Container>
         {renderButton('unloadTest', 'Remove All Test Data', async () => {
           if (testDataCount === 0) {
             Alert.alert('No Test Data', 'There is no test data to remove.');
