@@ -1,95 +1,90 @@
 // src/database/schema.ts
 
 /**
- * Contains the complete SQL schema for the local database.
- * Kept separate for clarity.
+ * Clean offline-first schema for the digital wardrobe app.
+ * This file is kept for reference - actual schema is managed by migrations.ts
+ * 
+ * Schema version: 1
  */
-export const CREATE_TABLE_STATEMENTS = `
+
+/**
+ * @deprecated Use migrations.ts for schema creation.
+ * This is kept only for documentation purposes.
+ */
+export const SCHEMA_REFERENCE = `
+  -- Schema managed by migrations.ts
+  -- See migrations.ts for the actual schema creation logic
+  
   PRAGMA foreign_keys = ON;
 
-  CREATE TABLE IF NOT EXISTS items (
+  -- Core items table
+  CREATE TABLE items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id TEXT,
-    name TEXT,
+    name TEXT NOT NULL,
     description TEXT,
     category TEXT,
-    created_at INTEGER,
-    updated_at INTEGER,
-    pending_sync INTEGER DEFAULT 1,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
     deleted INTEGER DEFAULT 0
   );
 
-  CREATE TABLE IF NOT EXISTS metadata (
+  -- Item metadata (flexible key-value attributes)
+  CREATE TABLE metadata (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    item_remote_id INTEGER,
-    attributes TEXT,
-    created_at INTEGER,
-    updated_at INTEGER,
-    pending_sync INTEGER DEFAULT 1,
+    item_id INTEGER NOT NULL,
+    attributes TEXT,  -- JSON string
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
     deleted INTEGER DEFAULT 0,
-    FOREIGN KEY(item_remote_id) REFERENCES items(id)
+    FOREIGN KEY(item_id) REFERENCES items(id) ON DELETE CASCADE
   );
 
-  -- Drop table if it exists with old schema (DEV only helper really, or handled by migration)
-  -- For now, we relies on user clearing app data or we just let it fail if column missing? 
-  -- simpler: just recreate if not exists, but if exists we need migration.
-  -- Since this is dev, let's assume we can tolerate a drop or we use a new table name if we wanted to be safe.
-  -- But let's just stick to standard CREATE IF NOT EXISTS but with correct column.
-  -- NOTE: If you have existing data, you might need to uninstall/reinstall or clear data.
-  
-  CREATE TABLE IF NOT EXISTS item_images (
+  -- Item images with local file references
+  CREATE TABLE item_images (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    item_remote_id INTEGER,
-    local_uri TEXT,
-    created_at INTEGER,
-    updated_at INTEGER,
-    pending_sync INTEGER DEFAULT 1,
+    item_id INTEGER NOT NULL,
+    local_uri TEXT NOT NULL,
+    is_primary INTEGER DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
     deleted INTEGER DEFAULT 0,
-    FOREIGN KEY(item_remote_id) REFERENCES items(id)
+    FOREIGN KEY(item_id) REFERENCES items(id) ON DELETE CASCADE
   );
 
-  CREATE TABLE IF NOT EXISTS tags (
+  -- Tags (unique names, case-insensitive)
+  CREATE TABLE tags (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id TEXT,
-    name TEXT,
-    created_at INTEGER,
-    updated_at INTEGER,
-    pending_sync INTEGER DEFAULT 1,
+    name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
     deleted INTEGER DEFAULT 0
   );
 
-  CREATE TABLE IF NOT EXISTS item_tags (
+  -- Many-to-many relationship between items and tags
+  CREATE TABLE item_tags (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    item_remote_id INTEGER,
-    tag_remote_id INTEGER,
-    created_at INTEGER,
-    updated_at INTEGER,
-    pending_sync INTEGER DEFAULT 1,
+    item_id INTEGER NOT NULL,
+    tag_id INTEGER NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
     deleted INTEGER DEFAULT 0,
-    FOREIGN KEY(item_remote_id) REFERENCES items(id),
-    FOREIGN KEY(tag_remote_id) REFERENCES tags(id)
+    FOREIGN KEY(item_id) REFERENCES items(id) ON DELETE CASCADE,
+    FOREIGN KEY(tag_id) REFERENCES tags(id) ON DELETE CASCADE,
+    UNIQUE(item_id, tag_id)
   );
 
-  -- View that centralizes item joins for easy reads
-  DROP VIEW IF EXISTS items_full;
-  CREATE VIEW IF NOT EXISTS items_full AS
-  SELECT i.id, i.name, i.category, i.description, i.created_at, i.updated_at,
-         m.attributes AS metadata,
-         GROUP_CONCAT(DISTINCT t.name) AS tags,
-         GROUP_CONCAT(DISTINCT ii.local_uri) AS images
-  FROM items i
-  LEFT JOIN metadata m ON m.item_remote_id = i.id AND m.deleted = 0
-  LEFT JOIN item_tags it ON it.item_remote_id = i.id AND it.deleted = 0
-  LEFT JOIN tags t ON t.id = it.tag_remote_id AND t.deleted = 0
-  LEFT JOIN item_images ii ON ii.item_remote_id = i.id AND ii.deleted = 0
-  WHERE i.deleted = 0
-  GROUP BY i.id
-  ORDER BY i.updated_at DESC;
+  -- Schema version tracking
+  CREATE TABLE schema_info (
+    version INTEGER PRIMARY KEY
+  );
 
-  -- Indexes to speed up common reads and joins
-  CREATE INDEX IF NOT EXISTS idx_items_deleted ON items(deleted);
-  CREATE INDEX IF NOT EXISTS idx_metadata_item_remote_id ON metadata(item_remote_id);
-  CREATE INDEX IF NOT EXISTS idx_item_tags_item_remote_id ON item_tags(item_remote_id);
-  CREATE INDEX IF NOT EXISTS idx_item_tags_tag_remote_id ON item_tags(tag_remote_id);
-  CREATE INDEX IF NOT EXISTS idx_tags_name ON tags(name);
+  -- Performance indexes
+  CREATE INDEX idx_items_deleted ON items(deleted);
+  CREATE INDEX idx_items_category ON items(category);
+  CREATE INDEX idx_items_updated_at ON items(updated_at);
+  CREATE INDEX idx_metadata_item_id ON metadata(item_id);
+  CREATE INDEX idx_item_tags_item_id ON item_tags(item_id);
+  CREATE INDEX idx_item_tags_tag_id ON item_tags(tag_id);
+  CREATE INDEX idx_item_images_item_id ON item_images(item_id);
+  CREATE INDEX idx_tags_name ON tags(name);
 `;
