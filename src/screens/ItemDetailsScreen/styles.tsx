@@ -1,23 +1,25 @@
 // src/screens/ItemDetailsScreen/styles.tsx
 
 import { StyleSheet, Dimensions } from 'react-native';
+import { ThemeColors } from '../../contexts/ThemeContext';
 
-const styles = StyleSheet.create({
-  container: { padding: 20 },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loading: { marginTop: 10, fontSize: 18, textAlign: 'center' },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 5 },
-  category: { fontSize: 18, color: '#555', marginBottom: 10 },
-  description: { fontSize: 16, fontStyle: 'italic', marginBottom: 15 },
+export const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  container: { padding: 20, backgroundColor: colors.background },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
+  loading: { marginTop: 10, fontSize: 18, textAlign: 'center', color: colors.text },
+  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 5, color: colors.text },
+  category: { fontSize: 18, color: colors.textSecondary, marginBottom: 10 },
+  description: { fontSize: 16, fontStyle: 'italic', marginBottom: 15, color: colors.textSecondary },
   section: { marginBottom: 15 },
-  sectionTitle: { fontWeight: 'bold', marginBottom: 5 },
+  sectionTitle: { fontWeight: 'bold', marginBottom: 5, color: colors.text },
   input: {
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: colors.inputBorder,
     borderRadius: 8,
     padding: 8,
     marginBottom: 8,
-    backgroundColor: '#fff',
+    backgroundColor: colors.inputBackground,
+    color: colors.text,
   },
   metaRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 5 },
   buttonRow: {
@@ -28,13 +30,13 @@ const styles = StyleSheet.create({
   metaCard: {
     padding: 10,
     borderRadius: 8,
-    backgroundColor: '#dfdfdfff',
+    backgroundColor: colors.surface,
     marginBottom: 8,
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  metaKey: { fontWeight: 'bold', flex: 1 },
-  metaValue: { color: '#333', flex: 2, textAlign: 'right' },
+  metaKey: { fontWeight: 'bold', flex: 1, color: colors.text },
+  metaValue: { color: colors.textSecondary, flex: 2, textAlign: 'right' },
   closeButton: {
     position: 'absolute',
     top: 40,
@@ -99,15 +101,19 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#ccc',
+    backgroundColor: colors.border,
     marginHorizontal: 4,
   },
   paginationDotActive: {
-    backgroundColor: '#333',
+    backgroundColor: colors.primary,
     width: 10,
     height: 10,
     borderRadius: 5,
   },
+  tagsText: {
+    color: colors.text,
+  },
+  noDataText: {
+    color: colors.textMuted,
+  },
 });
-
-export default styles;

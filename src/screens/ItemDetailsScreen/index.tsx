@@ -18,19 +18,19 @@ import {
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useDatabase } from '../../contexts/DatabaseContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import { loadItem } from '../../database/queries';
 import { RootStackParamList, WardrobeItem } from '../../types';
 import ImagePickerButton from '../../components/ImagePickerButton';
 import { saveImageLocally, deleteImageLocally, getLocalImageUri } from '../../lib/filesystem';
 import ImageViewer from 'react-native-image-zoom-viewer';
+import { createStyles } from './styles';
 
 type ItemDetailsRouteProp = RouteProp<RootStackParamList, 'ItemDetails'>;
 type ItemDetailsNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
   'ItemDetails'
 >;
-
-import styles from './styles';
 
 /**
  * Screen to view and edit details of a specific wardrobe item.
@@ -40,6 +40,8 @@ import styles from './styles';
 export default function ItemDetailsScreen() {
   const route = useRoute<ItemDetailsRouteProp>();
   const navigation = useNavigation<ItemDetailsNavigationProp>();
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const { itemId } = route.params;
 
   const [item, setItem] = useState<WardrobeItem | null>(null);
@@ -291,6 +293,7 @@ export default function ItemDetailsScreen() {
         <TextInput
           style={styles.input}
           placeholder="Name"
+          placeholderTextColor={colors.textMuted}
           value={name}
           onChangeText={setName}
         />
@@ -303,6 +306,7 @@ export default function ItemDetailsScreen() {
         <TextInput
           style={styles.input}
           placeholder="Category"
+          placeholderTextColor={colors.textMuted}
           value={category}
           onChangeText={setCategory}
         />
@@ -315,6 +319,7 @@ export default function ItemDetailsScreen() {
         <TextInput
           style={[styles.input, { minHeight: 80 }]}
           placeholder="Description"
+          placeholderTextColor={colors.textMuted}
           value={description}
           onChangeText={setDescription}
           multiline
@@ -335,12 +340,14 @@ export default function ItemDetailsScreen() {
                   value={m.key}
                   onChangeText={(text) => updateMetadataKey(idx, text)}
                   placeholder="Key"
+                  placeholderTextColor={colors.textMuted}
                 />
                 <TextInput
                   style={[styles.input, { flex: 2 }]}
                   value={m.value}
                   onChangeText={(text) => updateMetadataValue(idx, text)}
                   placeholder="Value"
+                  placeholderTextColor={colors.textMuted}
                 />
                 <Button
                   title="X"
@@ -359,7 +366,7 @@ export default function ItemDetailsScreen() {
             </View>
           ))
         ) : (
-          <Text>-</Text>
+          <Text style={styles.noDataText}>-</Text>
         )}
       </View>
 
@@ -372,11 +379,12 @@ export default function ItemDetailsScreen() {
             value={tags}
             onChangeText={setTags}
             placeholder="comma-separated"
+            placeholderTextColor={colors.textMuted}
           />
         ) : item.tags.length > 0 ? (
-          <Text>{item.tags.join(', ')}</Text>
+          <Text style={styles.tagsText}>{item.tags.join(', ')}</Text>
         ) : (
-          <Text>-</Text>
+          <Text style={styles.noDataText}>-</Text>
         )}
       </View>
 
