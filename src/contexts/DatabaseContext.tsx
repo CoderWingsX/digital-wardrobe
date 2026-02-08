@@ -97,14 +97,11 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
     const now = Date.now();
     const tempItem: WardrobeItem = {
       id: tempId,
-      user_id: undefined,
       name: data.name,
       description: data.description,
       category: data.category,
       created_at: now,
       updated_at: now,
-      pending_sync: 1,
-      deleted: 0,
       metadata: data.metadata || {},
       tags: data.tags || [],
       images: data.images || [],
@@ -142,9 +139,8 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
 
     const updatedLocal: WardrobeItem = {
       ...prevItem,
-      ...data, // Spread the new data
+      ...data,
       updated_at: Date.now(),
-      pending_sync: 1,
     };
 
     // 1. Optimistic state update
