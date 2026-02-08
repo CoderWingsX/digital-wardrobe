@@ -1,6 +1,6 @@
 // src/components/CustomDialog.tsx
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Modal,
   View,
@@ -36,11 +36,13 @@ export default function CustomDialog({
   onDismiss,
 }: Props) {
   const { colors, isDark } = useTheme();
+  const [modalVisible, setModalVisible] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
 
   useEffect(() => {
     if (visible) {
+      setModalVisible(true);
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -53,11 +55,23 @@ export default function CustomDialog({
           useNativeDriver: true,
         }),
       ]).start();
-    } else {
-      fadeAnim.setValue(0);
-      scaleAnim.setValue(0.9);
+    } else if (modalVisible) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: ANIMATION_DURATION,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 0.9,
+          duration: ANIMATION_DURATION,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setModalVisible(false);
+      });
     }
-  }, [visible, fadeAnim, scaleAnim]);
+  }, [visible]);
 
   const getButtonTextColor = (style?: 'default' | 'cancel' | 'destructive') => {
     if (style === 'destructive') return '#FF3B30';
@@ -67,7 +81,7 @@ export default function CustomDialog({
 
   return (
     <Modal
-      visible={visible}
+      visible={modalVisible}
       transparent
       animationType="none"
       onRequestClose={onDismiss}
