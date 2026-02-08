@@ -1,7 +1,9 @@
 // App.tsx
 
 import React from 'react';
+import { StatusBar } from 'react-native';
 import { DatabaseProvider, useDatabase } from './src/contexts/DatabaseContext';
+import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import Toast from 'react-native-toast-message';
 import { toastConfig } from './toastConfig';
@@ -10,6 +12,7 @@ import LoadingScreen from './src/components/LoadingScreen';
 
 function AppContent() {
   const { initializing, dbReady, dbError, migrationInfo } = useDatabase();
+  const { isDark } = useTheme();
 
   if (initializing) {
     return (
@@ -31,6 +34,7 @@ function AppContent() {
 
   return (
     <>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <AppNavigator />
       <Toast config={toastConfig} position="bottom" />
     </>
@@ -40,9 +44,11 @@ function AppContent() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <DatabaseProvider>
-        <AppContent />
-      </DatabaseProvider>
+      <ThemeProvider>
+        <DatabaseProvider>
+          <AppContent />
+        </DatabaseProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }
