@@ -18,6 +18,7 @@ export default function AppNavigator() {
       <Stack.Navigator
         screenOptions={{
           animation: 'slide_from_right',
+          animationDuration: 200,
           contentStyle: { backgroundColor: '#fff' },
           headerStyle: { backgroundColor: '#fff' },
           gestureEnabled: true,
