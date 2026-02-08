@@ -17,10 +17,11 @@ export default function AppNavigator() {
     <NavigationContainer>
       <Stack.Navigator
         screenOptions={{
-          animation: 'ios_from_right',
+          animation: 'slide_from_right',
           contentStyle: { backgroundColor: '#fff' },
           headerStyle: { backgroundColor: '#fff' },
-          animationDuration: 250,
+          gestureEnabled: true,
+          gestureDirection: 'horizontal',
         }}
       >
         <Stack.Screen
