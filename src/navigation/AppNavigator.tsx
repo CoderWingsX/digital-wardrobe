@@ -3,7 +3,7 @@
 import React from 'react';
 import { TouchableOpacity, Text } from 'react-native';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createStackNavigator, CardStyleInterpolators, TransitionPresets } from '@react-navigation/stack';
 import HomeScreen from '../screens/HomeScreen';
 import ItemDetailsScreen from '../screens/ItemDetailsScreen';
 import AddItemScreen from '../screens/AddItemScreen';
@@ -11,7 +11,7 @@ import SettingsScreen from '../screens/SettingsScreen';
 import { RootStackParamList } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
 
-const Stack = createNativeStackNavigator<RootStackParamList>();
+const Stack = createStackNavigator<RootStackParamList>();
 
 export default function AppNavigator() {
   const { isDark, colors } = useTheme();
@@ -42,9 +42,14 @@ export default function AppNavigator() {
     <NavigationContainer theme={navigationTheme}>
       <Stack.Navigator
         screenOptions={{
-          animation: 'slide_from_right',
-          animationDuration: 200,
-          contentStyle: { backgroundColor: colors.background },
+          ...TransitionPresets.SlideFromRightIOS,
+          transitionSpec: {
+            open: { animation: 'timing', config: { duration: 200 } },
+            close: { animation: 'timing', config: { duration: 200 } },
+          },
+          cardStyle: { backgroundColor: colors.background },
+          cardOverlayEnabled: true,
+          detachPreviousScreen: false,
           headerStyle: { backgroundColor: colors.headerBackground },
           headerTintColor: colors.text,
           headerTitleStyle: { color: colors.text },
