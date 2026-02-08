@@ -3,7 +3,7 @@
 import * as SQLite from 'expo-sqlite';
 import { dbLog, dbError } from '../lib/logger';
 
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 3;
 
 interface Migration {
   version: number;
@@ -57,6 +57,15 @@ const MIGRATIONS: Migration[] = [
         ORDER BY i.updated_at DESC;
       `);
       dbLog('items_full view created');
+    },
+  },
+  {
+    version: 3,
+    description: 'Remove legacy schema_info table (now using PRAGMA user_version)',
+    up: async (db: SQLite.SQLiteDatabase) => {
+      dbLog('Removing legacy schema_info table...');
+      await db.execAsync(`DROP TABLE IF EXISTS schema_info`);
+      dbLog('Legacy schema_info table removed');
     },
   },
 ];
@@ -313,29 +322,46 @@ async function migrateFromOldSchema(db: SQLite.SQLiteDatabase): Promise<void> {
   dbLog('Migration from old schema completed successfully');
 }
 
-export async function initSchemaInfo(db: SQLite.SQLiteDatabase): Promise<void> {
-  await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS schema_info (
-      version INTEGER PRIMARY KEY
-    );
-  `);
-}
-
+/**
+ * Get current schema version using PRAGMA user_version (SQLite standard).
+ * For backward compatibility, also checks legacy schema_info table.
+ */
 export async function getCurrentVersion(db: SQLite.SQLiteDatabase): Promise<number> {
-  await initSchemaInfo(db);
-  
-  const row = await db.getFirstAsync<{ version: number }>(
-    `SELECT MAX(version) as version FROM schema_info`
+  // First check PRAGMA user_version
+  const result = await db.getFirstAsync<{ user_version: number }>(
+    `PRAGMA user_version`
   );
+  const pragmaVersion = result?.user_version ?? 0;
   
-  return row?.version ?? 0;
+  if (pragmaVersion > 0) {
+    return pragmaVersion;
+  }
+  
+  // Fall back to legacy schema_info table for existing users
+  try {
+    const legacyResult = await db.getFirstAsync<{ version: number }>(
+      `SELECT MAX(version) as version FROM schema_info`
+    );
+    const legacyVersion = legacyResult?.version ?? 0;
+    
+    // Migrate the version to PRAGMA user_version
+    if (legacyVersion > 0) {
+      await db.execAsync(`PRAGMA user_version = ${legacyVersion}`);
+      dbLog(`Migrated version ${legacyVersion} from schema_info to PRAGMA user_version`);
+    }
+    
+    return legacyVersion;
+  } catch {
+    // schema_info table doesn't exist, fresh install
+    return 0;
+  }
 }
 
+/**
+ * Set schema version using PRAGMA user_version (SQLite standard).
+ */
 export async function setVersion(db: SQLite.SQLiteDatabase, version: number): Promise<void> {
-  await db.runAsync(
-    `INSERT OR REPLACE INTO schema_info (version) VALUES (?)`,
-    [version]
-  );
+  await db.execAsync(`PRAGMA user_version = ${version}`);
 }
 
 export async function migrateDatabase(db: SQLite.SQLiteDatabase): Promise<{
