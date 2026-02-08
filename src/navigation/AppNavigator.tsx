@@ -53,9 +53,7 @@ export default function AppNavigator() {
           headerStyle: { backgroundColor: colors.headerBackground },
           headerTintColor: colors.text,
           headerTitleStyle: { color: colors.text },
-          gestureEnabled: true,
-          gestureDirection: 'horizontal',
-
+          
         }}
       >
         <Stack.Screen
