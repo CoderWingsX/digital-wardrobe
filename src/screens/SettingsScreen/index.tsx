@@ -11,6 +11,7 @@ import {
   Share,
 } from 'react-native';
 import { useDatabase } from '../../contexts/DatabaseContext';
+import { useTheme, ThemeMode } from '../../contexts/ThemeContext';
 import {
   cleanupOrphanedImages,
   cleanupOrphanedRecords,
@@ -19,10 +20,12 @@ import {
   exportData,
   getDatabaseStats,
 } from '../../database/maintenance';
-import styles from './styles';
+import { createStyles } from './styles';
 
 export default function SettingsScreen() {
   const { schemaVersion, items, categories, allTags } = useDatabase();
+  const { mode, setMode, colors } = useTheme();
+  const styles = createStyles(colors);
   const [loading, setLoading] = useState<string | null>(null);
   const [stats, setStats] = useState<{
     itemCount: number;
@@ -156,7 +159,7 @@ export default function SettingsScreen() {
       accessibilityRole="button"
     >
       {loading === key ? (
-        <ActivityIndicator color={destructive ? '#fff' : '#007AFF'} />
+        <ActivityIndicator color={destructive ? '#fff' : colors.primary} />
       ) : (
         <Text style={[styles.buttonText, destructive && styles.destructiveButtonText]}>
           {label}
@@ -165,8 +168,30 @@ export default function SettingsScreen() {
     </TouchableOpacity>
   );
 
+  const renderThemeOption = (value: ThemeMode, label: string) => (
+    <TouchableOpacity
+      style={[styles.themeOption, mode === value && styles.themeOptionActive]}
+      onPress={() => setMode(value)}
+      accessibilityLabel={`${label} theme`}
+      accessibilityRole="button"
+    >
+      <Text style={[styles.themeOptionText, mode === value && styles.themeOptionTextActive]}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Appearance</Text>
+        <View style={styles.themeSelector}>
+          {renderThemeOption('system', 'System')}
+          {renderThemeOption('light', 'Light')}
+          {renderThemeOption('dark', 'Dark')}
+        </View>
+      </View>
+
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>App Info</Text>
         <View style={styles.infoRow}>

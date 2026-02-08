@@ -1,18 +1,19 @@
 // src/screens/SettingsScreen/styles.tsx
 
 import { StyleSheet } from 'react-native';
+import { ThemeColors } from '../../contexts/ThemeContext';
 
-export default StyleSheet.create({
+export const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.surface,
   },
   content: {
     padding: 16,
     paddingBottom: 32,
   },
   section: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -20,12 +21,12 @@ export default StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
     marginBottom: 12,
   },
   sectionHint: {
     fontSize: 13,
-    color: '#888',
+    color: colors.textMuted,
     marginBottom: 12,
   },
   infoRow: {
@@ -34,25 +35,25 @@ export default StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: colors.border,
   },
   infoLabel: {
     fontSize: 15,
-    color: '#666',
+    color: colors.textSecondary,
   },
   infoValue: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#333',
+    color: colors.text,
   },
   infoHint: {
     fontSize: 13,
-    color: '#aaa',
+    color: colors.textMuted,
     fontStyle: 'italic',
     marginBottom: 8,
   },
   button: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: colors.surface,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,
@@ -62,12 +63,38 @@ export default StyleSheet.create({
   buttonText: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#007AFF',
+    color: colors.primary,
   },
   destructiveButton: {
-    backgroundColor: '#FF3B30',
+    backgroundColor: colors.danger,
   },
   destructiveButtonText: {
     color: '#fff',
+  },
+  themeSelector: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  themeOption: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  themeOptionActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + '15',
+  },
+  themeOptionText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.textSecondary,
+  },
+  themeOptionTextActive: {
+    color: colors.primary,
   },
 });
