@@ -1,0 +1,262 @@
+{
+  "version": "1.0",
+  "description": "Test data for Digital Wardrobe app",
+  "items": [
+    {
+      "name": "Classic White T-Shirt",
+      "description": "Essential crew neck cotton tee, perfect for everyday wear",
+      "category": "Tops",
+      "metadata": { "brand": "Uniqlo", "color": "White", "size": "M", "material": "100% Cotton", "price": "15" },
+      "tags": ["casual", "summer", "basics", "test-data"],
+      "imageUrl": "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400"
+    },
+    {
+      "name": "Navy Blue Polo",
+      "description": "Smart casual polo shirt with subtle texture",
+      "category": "Tops",
+      "metadata": { "brand": "Ralph Lauren", "color": "Navy", "size": "M", "material": "Pique Cotton", "price": "89" },
+      "tags": ["smart-casual", "summer", "preppy", "test-data"],
+      "imageUrl": "https://images.unsplash.com/photo-1586790170083-2f9ceadc732d?w=400"
+    },
+    {
+      "name": "Striped Oxford Shirt",
+      "description": "Button-down oxford shirt with blue stripes",
+      "category": "Tops",
+      "metadata": { "brand": "Brooks Brothers", "color": "Blue/White", "size": "M", "material": "Oxford Cotton", "price": "120" },
+      "tags": ["formal", "office", "classic", "test-data"],
+      "imageUrl": "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=400"
+    },
+    {
+      "name": "Black Hoodie",
+      "description": "Comfortable pullover hoodie with kangaroo pocket",
+      "category": "Tops",
+      "metadata": { "brand": "Nike", "color": "Black", "size": "L", "material": "Cotton Blend", "price": "65" },
+      "tags": ["casual", "sporty", "winter", "test-data"],
+      "imageUrl": "https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=400"
+    },
+    {
+      "name": "Floral Blouse",
+      "description": "Lightweight floral print blouse with flutter sleeves",
+      "category": "Tops",
+      "metadata": { "brand": "Zara", "color": "Multi", "size": "S", "material": "Viscose", "price": "45" },
+      "tags": ["feminine", "spring", "date-night", "test-data"],
+      "imageUrl": "https://images.unsplash.com/photo-1564257631407-4deb1f99d992?w=400"
+    },
+    {
+      "name": "Grey Crewneck Sweater",
+      "description": "Soft merino wool sweater for layering",
+      "category": "Tops",
+      "metadata": { "brand": "J.Crew", "color": "Heather Grey", "size": "M", "material": "Merino Wool", "price": "98" },
+      "tags": ["casual", "fall", "layering", "test-data"],
+      "imageUrl": "https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=400"
+    },
+    {
+      "name": "Slim Fit Dark Jeans",
+      "description": "Classic dark wash slim fit denim jeans",
+      "category": "Bottoms",
+      "metadata": { "brand": "Levi's", "color": "Dark Blue", "size": "32x32", "material": "Stretch Denim", "price": "79" },
+      "tags": ["casual", "versatile", "everyday", "test-data"],
+      "imageUrl": "https://images.unsplash.com/photo-1542272604-787c3835535d?w=400"
+    },
+    {
+      "name": "Khaki Chinos",
+      "description": "Comfortable straight-fit chino pants",
+      "category": "Bottoms",
+      "metadata": { "brand": "Dockers", "color": "Khaki", "size": "32x32", "material": "Cotton Twill", "price": "55" },
+      "tags": ["smart-casual", "office", "versatile", "test-data"],
+      "imageUrl": "https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=400"
+    },
+    {
+      "name": "Black Dress Pants",
+      "description": "Tailored wool blend dress trousers",
+      "category": "Bottoms",
+      "metadata": { "brand": "Hugo Boss", "color": "Black", "size": "32", "material": "Wool Blend", "price": "175" },
+      "tags": ["formal", "office", "business", "test-data"],
+      "imageUrl": "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=400"
+    },
+    {
+      "name": "Denim Shorts",
+      "description": "Classic cut-off denim shorts for summer",
+      "category": "Bottoms",
+      "metadata": { "brand": "Gap", "color": "Light Blue", "size": "M", "material": "Denim", "price": "40" },
+      "tags": ["casual", "summer", "beach", "test-data"],
+      "imageUrl": "https://images.unsplash.com/photo-1591195853828-11db59a44f6b?w=400"
+    },
+    {
+      "name": "Pleated Midi Skirt",
+      "description": "Elegant pleated skirt in blush pink",
+      "category": "Bottoms",
+      "metadata": { "brand": "H&M", "color": "Blush Pink", "size": "S", "material": "Polyester", "price": "35" },
+      "tags": ["feminine", "spring", "elegant", "test-data"],
+      "imageUrl": "https://images.unsplash.com/photo-1583496661160-fb5886a0uj?w=400"
+    },
+    {
+      "name": "Athletic Joggers",
+      "description": "Tapered jogger pants with zippered pockets",
+      "category": "Bottoms",
+      "metadata": { "brand": "Adidas", "color": "Charcoal", "size": "M", "material": "Tech Fleece", "price": "70" },
+      "tags": ["sporty", "athleisure", "comfortable", "test-data"],
+      "imageUrl": "https://images.unsplash.com/photo-1552902865-b72c031ac5ea?w=400"
+    },
+    {
+      "name": "Little Black Dress",
+      "description": "Timeless sleeveless A-line dress",
+      "category": "Dresses",
+      "metadata": { "brand": "Diane von Furstenberg", "color": "Black", "size": "S", "material": "Crepe", "price": "298" },
+      "tags": ["formal", "evening", "classic", "test-data"],
+      "imageUrl": "https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=400"
+    },
+    {
+      "name": "Summer Maxi Dress",
+      "description": "Flowy bohemian maxi dress with tropical print",
+      "category": "Dresses",
+      "metadata": { "brand": "Free People", "color": "Multi", "size": "M", "material": "Rayon", "price": "128" },
+      "tags": ["casual", "summer", "boho", "vacation", "test-data"],
+      "imageUrl": "https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=400"
+    },
+    {
+      "name": "Wrap Dress",
+      "description": "Flattering wrap dress in emerald green",
+      "category": "Dresses",
+      "metadata": { "brand": "Reformation", "color": "Emerald", "size": "M", "material": "Silk", "price": "218" },
+      "tags": ["elegant", "date-night", "special-occasion", "test-data"],
+      "imageUrl": "https://images.unsplash.com/photo-1612336307429-8a898d10e223?w=400"
+    },
+    {
+      "name": "Denim Jacket",
+      "description": "Classic trucker style denim jacket",
+      "category": "Outerwear",
+      "metadata": { "brand": "Levi's", "color": "Medium Wash", "size": "M", "material": "Denim", "price": "98" },
+      "tags": ["casual", "layering", "spring", "fall", "test-data"],
+      "imageUrl": "https://images.unsplash.com/photo-1576995853123-5a10305d93c0?w=400"
+    },
+    {
+      "name": "Leather Biker Jacket",
+      "description": "Classic motorcycle jacket in genuine leather",
+      "category": "Outerwear",
+      "metadata": { "brand": "AllSaints", "color": "Black", "size": "M", "material": "Leather", "price": "450" },
+      "tags": ["edgy", "fall", "statement", "test-data"],
+      "imageUrl": "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=400"
+    },
+    {
+      "name": "Wool Peacoat",
+      "description": "Double-breasted navy wool peacoat",
+      "category": "Outerwear",
+      "metadata": { "brand": "Burberry", "color": "Navy", "size": "M", "material": "Wool", "price": "895" },
+      "tags": ["formal", "winter", "classic", "test-data"],
+      "imageUrl": "https://images.unsplash.com/photo-1544923246-77307dd628b5?w=400"
+    },
+    {
+      "name": "Puffer Jacket",
+      "description": "Lightweight packable down puffer",
+      "category": "Outerwear",
+      "metadata": { "brand": "The North Face", "color": "Red", "size": "L", "material": "Nylon/Down", "price": "199" },
+      "tags": ["winter", "outdoor", "sporty", "test-data"],
+      "imageUrl": "https://images.unsplash.com/photo-1539533018447-63fcce2678e3?w=400"
+    },
+    {
+      "name": "Trench Coat",
+      "description": "Classic double-breasted trench coat",
+      "category": "Outerwear",
+      "metadata": { "brand": "Aquascutum", "color": "Camel", "size": "M", "material": "Cotton Gabardine", "price": "650" },
+      "tags": ["formal", "spring", "fall", "timeless", "test-data"],
+      "imageUrl": "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=400"
+    },
+    {
+      "name": "White Sneakers",
+      "description": "Minimalist leather sneakers",
+      "category": "Shoes",
+      "metadata": { "brand": "Common Projects", "color": "White", "size": "10", "material": "Leather", "price": "425" },
+      "tags": ["casual", "versatile", "minimalist", "test-data"],
+      "imageUrl": "https://images.unsplash.com/photo-1549298916-b41d501d3772?w=400"
+    },
+    {
+      "name": "Running Shoes",
+      "description": "Lightweight running shoes with cushioned sole",
+      "category": "Shoes",
+      "metadata": { "brand": "Nike", "color": "Black/Volt", "size": "10", "material": "Mesh/Foam", "price": "120" },
+      "tags": ["sporty", "athletic", "running", "test-data"],
+      "imageUrl": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400"
+    },
+    {
+      "name": "Chelsea Boots",
+      "description": "Classic suede Chelsea boots",
+      "category": "Shoes",
+      "metadata": { "brand": "R.M. Williams", "color": "Tan", "size": "10", "material": "Suede", "price": "495" },
+      "tags": ["smart-casual", "fall", "winter", "test-data"],
+      "imageUrl": "https://images.unsplash.com/photo-1638247025967-b4e38f787b76?w=400"
+    },
+    {
+      "name": "Loafers",
+      "description": "Penny loafers in burgundy leather",
+      "category": "Shoes",
+      "metadata": { "brand": "G.H. Bass", "color": "Burgundy", "size": "10", "material": "Leather", "price": "110" },
+      "tags": ["smart-casual", "preppy", "classic", "test-data"],
+      "imageUrl": "https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?w=400"
+    },
+    {
+      "name": "Heeled Sandals",
+      "description": "Strappy block heel sandals",
+      "category": "Shoes",
+      "metadata": { "brand": "Steve Madden", "color": "Nude", "size": "7", "material": "Leather", "price": "89" },
+      "tags": ["formal", "summer", "evening", "test-data"],
+      "imageUrl": "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=400"
+    },
+    {
+      "name": "Canvas Tote Bag",
+      "description": "Large everyday canvas tote",
+      "category": "Accessories",
+      "metadata": { "brand": "L.L. Bean", "color": "Natural/Navy", "size": "Large", "material": "Canvas", "price": "40" },
+      "tags": ["casual", "everyday", "practical", "test-data"],
+      "imageUrl": "https://images.unsplash.com/photo-1594223274512-ad4803739b7c?w=400"
+    },
+    {
+      "name": "Leather Belt",
+      "description": "Classic brown leather dress belt",
+      "category": "Accessories",
+      "metadata": { "brand": "Cole Haan", "color": "Brown", "size": "34", "material": "Leather", "price": "65" },
+      "tags": ["formal", "essential", "classic", "test-data"],
+      "imageUrl": "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400"
+    },
+    {
+      "name": "Wool Scarf",
+      "description": "Soft cashmere blend scarf",
+      "category": "Accessories",
+      "metadata": { "brand": "Acne Studios", "color": "Grey", "size": "One Size", "material": "Cashmere/Wool", "price": "200" },
+      "tags": ["winter", "layering", "cozy", "test-data"],
+      "imageUrl": "https://images.unsplash.com/photo-1520903920243-00d872a2d1c9?w=400"
+    },
+    {
+      "name": "Aviator Sunglasses",
+      "description": "Classic gold frame aviator sunglasses",
+      "category": "Accessories",
+      "metadata": { "brand": "Ray-Ban", "color": "Gold/Green", "size": "58mm", "material": "Metal/Glass", "price": "163" },
+      "tags": ["summer", "classic", "essential", "test-data"],
+      "imageUrl": "https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=400"
+    },
+    {
+      "name": "Baseball Cap",
+      "description": "Embroidered cotton baseball cap",
+      "category": "Accessories",
+      "metadata": { "brand": "New Era", "color": "Navy", "size": "Adjustable", "material": "Cotton", "price": "32" },
+      "tags": ["casual", "sporty", "summer", "test-data"],
+      "imageUrl": "https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=400"
+    },
+    {
+      "name": "Watch",
+      "description": "Minimalist automatic watch with leather strap",
+      "category": "Accessories",
+      "metadata": { "brand": "Tissot", "color": "Silver/Black", "size": "40mm", "material": "Steel/Leather", "price": "375" },
+      "tags": ["formal", "everyday", "classic", "test-data"],
+      "imageUrl": "https://images.unsplash.com/photo-1524592094714-0f0654e20314?w=400"
+    },
+    {
+      "name": "Crossbody Bag",
+      "description": "Compact leather crossbody bag",
+      "category": "Accessories",
+      "metadata": { "brand": "Coach", "color": "Black", "size": "Small", "material": "Pebbled Leather", "price": "295" },
+      "tags": ["casual", "everyday", "practical", "test-data"],
+      "imageUrl": "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=400"
+    }
+  ]
+}

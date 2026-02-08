@@ -1,6 +1,6 @@
 // src/screens/SettingsScreen/index.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -20,10 +20,16 @@ import {
   exportData,
   getDatabaseStats,
 } from '../../database/maintenance';
+import {
+  loadTestData,
+  unloadTestData,
+  getTestDataCount,
+  getAvailableTestData,
+} from '../../data/testDataLoader';
 import { createStyles } from './styles';
 
 export default function SettingsScreen() {
-  const { schemaVersion, items, categories, allTags } = useDatabase();
+  const { schemaVersion, items, categories, allTags, refresh } = useDatabase();
   const { mode, setMode, colors } = useTheme();
   const styles = createStyles(colors);
   const [loading, setLoading] = useState<string | null>(null);
@@ -33,6 +39,12 @@ export default function SettingsScreen() {
     imageCount: number;
     deletedItemCount: number;
   } | null>(null);
+  const [testDataCount, setTestDataCount] = useState<number>(0);
+  const testDataInfo = getAvailableTestData();
+
+  useEffect(() => {
+    getTestDataCount().then(setTestDataCount);
+  }, [items]);
 
   const runWithLoading = async (key: string, fn: () => Promise<void>) => {
     setLoading(key);
@@ -251,6 +263,78 @@ export default function SettingsScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Data</Text>
         {renderButton('export', 'Export Data (JSON)', handleExportData)}
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Test Data</Text>
+        <Text style={styles.sectionHint}>
+          Load sample items to test search and filtering
+        </Text>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Available Items</Text>
+          <Text style={styles.infoValue}>{testDataInfo.total}</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Currently Loaded</Text>
+          <Text style={styles.infoValue}>{testDataCount}</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Categories</Text>
+          <Text style={styles.infoValue}>{testDataInfo.categories.join(', ')}</Text>
+        </View>
+        {renderButton('loadTest', `Load Test Data (~${Math.ceil(testDataInfo.total / 2)} items)`, async () => {
+          Alert.alert(
+            'Load Test Data',
+            'This will download images and add test items to your wardrobe. Continue?',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Load (with images)',
+                onPress: async () => {
+                  await runWithLoading('loadTest', async () => {
+                    const result = await loadTestData(undefined, true);
+                    await refresh();
+                    Alert.alert('Test Data Loaded', `Loaded: ${result.loaded}\nFailed: ${result.failed}`);
+                  });
+                },
+              },
+              {
+                text: 'Load (no images)',
+                onPress: async () => {
+                  await runWithLoading('loadTest', async () => {
+                    const result = await loadTestData(undefined, false);
+                    await refresh();
+                    Alert.alert('Test Data Loaded', `Loaded: ${result.loaded}\nFailed: ${result.failed}`);
+                  });
+                },
+              },
+            ]
+          );
+        })}
+        {renderButton('unloadTest', 'Remove All Test Data', async () => {
+          if (testDataCount === 0) {
+            Alert.alert('No Test Data', 'There is no test data to remove.');
+            return;
+          }
+          Alert.alert(
+            'Remove Test Data',
+            `This will remove ${testDataCount} test items and their images. Continue?`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Remove',
+                style: 'destructive',
+                onPress: async () => {
+                  await runWithLoading('unloadTest', async () => {
+                    const result = await unloadTestData();
+                    await refresh();
+                    Alert.alert('Test Data Removed', `Removed: ${result.removed} items`);
+                  });
+                },
+              },
+            ]
+          );
+        }, true)}
       </View>
     </ScrollView>
   );
