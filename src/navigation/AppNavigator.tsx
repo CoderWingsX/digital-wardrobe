@@ -1,40 +1,37 @@
-// src/navigaton/AppNavigator.tsx
+// src/navigation/AppNavigator.tsx
 
 import React from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { TouchableOpacity, Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useDatabase } from '../contexts/DatabaseContext';
 import HomeScreen from '../screens/HomeScreen';
 import ItemDetailsScreen from '../screens/ItemDetailsScreen';
 import AddItemScreen from '../screens/AddItemScreen';
+import SettingsScreen from '../screens/SettingsScreen';
 import { RootStackParamList } from '../types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-/**
- * Handles all app navigation.
- * It waits for the database to be ready before showing any screens.
- */
 export default function AppNavigator() {
-  const { dbReady } = useDatabase();
-
-  if (!dbReady) {
-    console.log('Database not ready, showing loading indicator.');
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
-  }
-
   return (
     <NavigationContainer>
       <Stack.Navigator>
         <Stack.Screen
           name="Home"
           component={HomeScreen}
-          options={{ title: 'Wardrobe' }}
+          options={({ navigation }) => ({
+            title: 'Wardrobe',
+            headerRight: () => (
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Settings')}
+                style={{ padding: 8 }}
+                accessibilityLabel="Settings"
+                accessibilityRole="button"
+              >
+                <Text style={{ fontSize: 22 }}>⚙️</Text>
+              </TouchableOpacity>
+            ),
+          })}
         />
         <Stack.Screen
           name="ItemDetails"
@@ -45,6 +42,11 @@ export default function AppNavigator() {
           name="AddItem"
           component={AddItemScreen}
           options={{ title: 'Add Item' }}
+        />
+        <Stack.Screen
+          name="Settings"
+          component={SettingsScreen}
+          options={{ title: 'Settings' }}
         />
       </Stack.Navigator>
     </NavigationContainer>
