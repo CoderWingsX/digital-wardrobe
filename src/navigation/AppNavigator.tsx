@@ -15,7 +15,11 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function AppNavigator() {
   return (
     <NavigationContainer>
-      <Stack.Navigator>
+      <Stack.Navigator
+        screenOptions={{
+          animation: 'ios_from_right',
+        }}
+      >
         <Stack.Screen
           name="Home"
           component={HomeScreen}
