@@ -176,14 +176,14 @@ export default function HomeScreen() {
           />
 
           {showSuggestions && suggestions.length > 0 && (
-            <View 
-              style={styles.suggestionsContainer}
-              onStartShouldSetResponder={() => true}
-            >
+            <View style={styles.suggestionsContainer}>
               <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={{ flexGrow: 1 }}
                 nestedScrollEnabled={true}
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={true}
+                bounces={false}
               >
                 {suggestions.map((item, index) => (
                   <TouchableOpacity
