@@ -101,6 +101,22 @@ async function createFreshSchema(db: SQLite.SQLiteDatabase): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_item_tags_tag_id ON item_tags(tag_id);
     CREATE INDEX IF NOT EXISTS idx_item_images_item_id ON item_images(item_id);
     CREATE INDEX IF NOT EXISTS idx_tags_name ON tags(name);
+
+    -- View for loading items with all related data
+    CREATE VIEW IF NOT EXISTS items_full AS
+    SELECT 
+      i.id, i.name, i.category, i.description, i.created_at, i.updated_at,
+      m.attributes AS metadata,
+      GROUP_CONCAT(DISTINCT t.name) AS tags,
+      GROUP_CONCAT(DISTINCT ii.local_uri) AS images
+    FROM items i
+    LEFT JOIN metadata m ON m.item_id = i.id AND m.deleted = 0
+    LEFT JOIN item_tags it ON it.item_id = i.id AND it.deleted = 0
+    LEFT JOIN tags t ON t.id = it.tag_id AND t.deleted = 0
+    LEFT JOIN item_images ii ON ii.item_id = i.id AND ii.deleted = 0
+    WHERE i.deleted = 0
+    GROUP BY i.id
+    ORDER BY i.updated_at DESC;
   `);
   
   dbLog('Fresh schema created successfully');
@@ -244,8 +260,25 @@ async function migrateFromOldSchema(db: SQLite.SQLiteDatabase): Promise<void> {
       CREATE INDEX IF NOT EXISTS idx_tags_name ON tags(name);
     `);
     
-    // 7. Drop old view if exists
-    await db.execAsync(`DROP VIEW IF EXISTS items_full;`);
+    // 7. Recreate view with new column names
+    await db.execAsync(`
+      DROP VIEW IF EXISTS items_full;
+      
+      CREATE VIEW items_full AS
+      SELECT 
+        i.id, i.name, i.category, i.description, i.created_at, i.updated_at,
+        m.attributes AS metadata,
+        GROUP_CONCAT(DISTINCT t.name) AS tags,
+        GROUP_CONCAT(DISTINCT ii.local_uri) AS images
+      FROM items i
+      LEFT JOIN metadata m ON m.item_id = i.id AND m.deleted = 0
+      LEFT JOIN item_tags it ON it.item_id = i.id AND it.deleted = 0
+      LEFT JOIN tags t ON t.id = it.tag_id AND t.deleted = 0
+      LEFT JOIN item_images ii ON ii.item_id = i.id AND ii.deleted = 0
+      WHERE i.deleted = 0
+      GROUP BY i.id
+      ORDER BY i.updated_at DESC;
+    `);
     
   } finally {
     await db.execAsync(`PRAGMA foreign_keys = ON;`);

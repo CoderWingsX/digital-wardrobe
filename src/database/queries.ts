@@ -24,18 +24,7 @@ function parseItemRow(r: any): WardrobeItem {
 export async function loadItem(id: number): Promise<WardrobeItem | null> {
   const database = await getDB();
   const row = await database.getFirstAsync(
-    `SELECT 
-      i.id, i.name, i.category, i.description, i.created_at, i.updated_at,
-      m.attributes AS metadata,
-      GROUP_CONCAT(DISTINCT t.name) AS tags,
-      GROUP_CONCAT(DISTINCT ii.local_uri) AS images
-    FROM items i
-    LEFT JOIN metadata m ON m.item_id = i.id AND m.deleted = 0
-    LEFT JOIN item_tags it ON it.item_id = i.id AND it.deleted = 0
-    LEFT JOIN tags t ON t.id = it.tag_id AND t.deleted = 0
-    LEFT JOIN item_images ii ON ii.item_id = i.id AND ii.deleted = 0
-    WHERE i.id = ? AND i.deleted = 0
-    GROUP BY i.id`,
+    `SELECT * FROM items_full WHERE id = ?`,
     [id]
   );
 
@@ -48,21 +37,7 @@ export async function loadItem(id: number): Promise<WardrobeItem | null> {
  */
 export async function loadItems(): Promise<WardrobeItem[]> {
   const database = await getDB();
-  const rows = await database.getAllAsync(
-    `SELECT 
-      i.id, i.name, i.category, i.description, i.created_at, i.updated_at,
-      m.attributes AS metadata,
-      GROUP_CONCAT(DISTINCT t.name) AS tags,
-      GROUP_CONCAT(DISTINCT ii.local_uri) AS images
-    FROM items i
-    LEFT JOIN metadata m ON m.item_id = i.id AND m.deleted = 0
-    LEFT JOIN item_tags it ON it.item_id = i.id AND it.deleted = 0
-    LEFT JOIN tags t ON t.id = it.tag_id AND t.deleted = 0
-    LEFT JOIN item_images ii ON ii.item_id = i.id AND ii.deleted = 0
-    WHERE i.deleted = 0
-    GROUP BY i.id
-    ORDER BY i.updated_at DESC`
-  );
+  const rows = await database.getAllAsync(`SELECT * FROM items_full`);
 
   if (!Array.isArray(rows)) {
     dbLog('No rows, returning empty array');
