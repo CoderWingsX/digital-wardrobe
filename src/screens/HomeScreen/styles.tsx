@@ -1,15 +1,18 @@
 // src/screens/HomeScreen/styles.tsx
 
 import { StyleSheet } from 'react-native';
+import { ThemeColors } from '../../contexts/ThemeContext';
 
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20 },
+export const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  container: { flex: 1, padding: 20, backgroundColor: colors.background },
   input: {
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: colors.inputBorder,
     borderRadius: 8,
     padding: 10,
     marginBottom: 10,
+    backgroundColor: colors.inputBackground,
+    color: colors.text,
   },
   buttonRow: {
     flexDirection: 'row',
@@ -21,11 +24,11 @@ const styles = StyleSheet.create({
   item: {
     flexDirection: 'row',
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: colors.border,
     borderRadius: 12,
     padding: 12,
     marginBottom: 12,
-    backgroundColor: '#fff',
+    backgroundColor: colors.card,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -37,37 +40,38 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 8,
     marginRight: 12,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: colors.surface,
   },
   itemContent: {
     flex: 1,
     justifyContent: 'center',
   },
-  title: { fontWeight: 'bold', fontSize: 18, color: '#333' },
-  category: { fontSize: 14, color: '#666', marginBottom: 4 },
-  description: { fontSize: 13, color: '#888' },
+  title: { fontWeight: 'bold', fontSize: 18, color: colors.text },
+  category: { fontSize: 14, color: colors.textSecondary, marginBottom: 4 },
+  description: { fontSize: 13, color: colors.textMuted },
   searchContainer: {
     marginBottom: 10,
-    zIndex: 10, // Ensure suggestions appear over the list
+    zIndex: 10,
   },
   searchInput: {
     height: 45,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: colors.inputBorder,
     borderRadius: 22.5,
     paddingHorizontal: 20,
-    backgroundColor: '#fff',
+    backgroundColor: colors.inputBackground,
     fontSize: 16,
+    color: colors.text,
   },
   suggestionsContainer: {
     position: 'absolute',
     top: 50,
     left: 0,
     right: 0,
-    backgroundColor: '#fff',
+    backgroundColor: colors.card,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: colors.border,
     maxHeight: 200,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -79,27 +83,25 @@ const styles = StyleSheet.create({
   suggestionItem: {
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: colors.border,
     flexDirection: 'row',
     alignItems: 'center',
   },
   suggestionText: {
     fontSize: 15,
-    color: '#333',
+    color: colors.text,
     flex: 1,
   },
   suggestionType: {
     fontSize: 12,
-    color: '#999',
-    backgroundColor: '#f0f0f0',
+    color: colors.textMuted,
+    backgroundColor: colors.surface,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
     marginLeft: 8,
   },
-  sectionTitle: { fontWeight: 'bold', marginTop: 10, marginBottom: 5 },
+  sectionTitle: { fontWeight: 'bold', marginTop: 10, marginBottom: 5, color: colors.text },
   metaRow: { flexDirection: 'row', alignItems: 'center' },
-  modalView: { flex: 1, padding: 16, backgroundColor: 'white' },
+  modalView: { flex: 1, padding: 16, backgroundColor: colors.background },
 });
-
-export default styles;

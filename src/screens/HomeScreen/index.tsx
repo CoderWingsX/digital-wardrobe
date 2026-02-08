@@ -12,13 +12,14 @@ import {
   Keyboard,
 } from 'react-native';
 import { useDatabase } from '../../contexts/DatabaseContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types';
 import Toast from 'react-native-toast-message';
 import { getLocalImageUri } from '../../lib/filesystem';
 import EmptyState from '../../components/EmptyState';
-import styles from './styles';
+import { createStyles } from './styles';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -34,6 +35,8 @@ interface Suggestion {
 export default function HomeScreen() {
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const { items, refresh, clearAllOptimistic } = useDatabase();
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
 
@@ -160,6 +163,7 @@ export default function HomeScreen() {
           <TextInput
             style={styles.searchInput}
             placeholder="Search clothes, tags, colors..."
+            placeholderTextColor={colors.textMuted}
             value={searchQuery}
             onChangeText={(text) => {
               setSearchQuery(text);
