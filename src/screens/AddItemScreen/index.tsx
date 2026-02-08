@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   TextInput as RNTextInput,
+  TouchableOpacity,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDatabase } from '../../contexts/DatabaseContext';
@@ -68,6 +69,10 @@ export default function AddItemScreen() {
     const newMeta = [...metadata];
     newMeta[index] = { key, value };
     setMetadata(newMeta);
+  };
+
+  const removeImage = (idx: number) => {
+    setImages(images.filter((_, i) => i !== idx));
   };
 
   async function handleAddItem() {
@@ -197,13 +202,20 @@ export default function AddItemScreen() {
         <Button title="+ Add Metadata Field" onPress={addMetadataField} />
 
         <Text style={styles.sectionTitle}>Images</Text>
-        <ScrollView horizontal style={{ marginVertical: 10 }}>
+        <ScrollView horizontal style={styles.imageContainer}>
           {images.map((uri, idx) => (
-            <Image
-              key={idx}
-              source={{ uri: getLocalImageUri(uri) }}
-              style={{ width: 100, height: 100, marginRight: 10, borderRadius: 8 }}
-            />
+            <View key={idx} style={styles.imageWrapper}>
+              <Image
+                source={{ uri: getLocalImageUri(uri) }}
+                style={styles.imagePreview}
+              />
+              <TouchableOpacity
+                style={styles.deleteImageButton}
+                onPress={() => removeImage(idx)}
+              >
+                <Text style={styles.deleteImageText}>✕</Text>
+              </TouchableOpacity>
+            </View>
           ))}
         </ScrollView>
         <ImagePickerButton onImageSelected={(uri) => setImages([...images, uri])} />
