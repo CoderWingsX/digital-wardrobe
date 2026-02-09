@@ -70,12 +70,14 @@ export default function TagInput({
             .slice(0, 20); // Limit suggestions
     }, [inputText, allTags, tags]);
 
-    const addTag = (tag: string) => {
+    const addTag = (tag: string, clearInput = true) => {
         const trimmed = tag.trim();
         if (trimmed && !tags.some((t) => t.toLowerCase() === trimmed.toLowerCase())) {
             onChangeTags([...tags, trimmed]);
         }
-        setInputText('');
+        if (clearInput) {
+            setInputText('');
+        }
     };
 
     const removeTag = (tagToRemove: string) => {
@@ -83,16 +85,9 @@ export default function TagInput({
     };
 
     const handleInputChange = (text: string) => {
-        // If the last character is a space or comma, add the tag and CLEAR the input
-        if (text.endsWith(' ') || text.endsWith(',')) {
-            const tagToAdd = text.slice(0, -1);
-            if (tagToAdd.trim()) {
-                addTag(tagToAdd);
-            }
-            setInputText(''); // Explicitly clear
-            return;
-        }
-        setInputText(text);
+        // Enforce lowercase and no spaces
+        const formattedText = text.toLowerCase().replace(/\s/g, '');
+        setInputText(formattedText);
     };
 
     return (
@@ -174,8 +169,8 @@ export default function TagInput({
                                     autoFocus={true}
                                 />
                                 {inputText.length > 0 && (
-                                    <TouchableOpacity onPress={() => addTag(inputText)}>
-                                        <Ionicons name="arrow-up-circle" size={24} color={colors.primary} />
+                                    <TouchableOpacity onPress={() => setInputText('')}>
+                                        <Ionicons name="close-circle" size={24} color={colors.textMuted} />
                                     </TouchableOpacity>
                                 )}
                             </View>
@@ -189,7 +184,7 @@ export default function TagInput({
                                             <TouchableOpacity
                                                 key={suggestion}
                                                 style={[styles.suggestionBubble, { borderColor: colors.border, backgroundColor: colors.surface }]}
-                                                onPress={() => addTag(suggestion)}
+                                                onPress={() => addTag(suggestion, false)}
                                             >
                                                 <Ionicons name="add" size={14} color={colors.textMuted} style={{ marginRight: 4 }} />
                                                 <Text style={{ color: colors.text }}>{suggestion}</Text>
