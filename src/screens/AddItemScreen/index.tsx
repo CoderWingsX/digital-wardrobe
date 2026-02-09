@@ -38,7 +38,7 @@ export default function AddItemScreen() {
   const styles = createStyles(colors, insets.bottom);
   const scrollViewRef = useRef<ScrollView>(null);
   const tagsInputRef = useRef<RNTextInput>(null);
-  const tagInputContainerRef = useRef<View>(null);
+  // const tagInputContainerRef = useRef<View>(null); // Unused now
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
@@ -148,7 +148,8 @@ export default function AddItemScreen() {
         ref={scrollViewRef}
         keyboardShouldPersistTaps="always"
         scrollEnabled={!isTagInputFocused}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={styles.contentContainer}
+        nestedScrollEnabled={true}
       >
         <Text style={styles.label}>
           Item Name <Text style={styles.required}>*</Text>
@@ -226,20 +227,8 @@ export default function AddItemScreen() {
         <TagInput
           tags={tags}
           onChangeTags={setTags}
-          containerRef={tagInputContainerRef}
-          onFocusChange={setIsTagInputFocused}
-          onFocus={() => {
-            // Wait for keyboard and layout
-            setTimeout(() => {
-              tagInputContainerRef.current?.measureLayout(
-                scrollViewRef.current as any,
-                (x, y) => {
-                  scrollViewRef.current?.scrollTo({ y: Math.max(0, y - TAG_INPUT_SCROLL_OFFSET), animated: true });
-                },
-                () => { } // error callback
-              );
-            }, 300);
-          }}
+          onInteractionStart={() => setIsTagInputFocused(true)}
+          onInteractionEnd={() => setIsTagInputFocused(false)}
         />
 
         <View

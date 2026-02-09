@@ -254,6 +254,7 @@ export default function ItemDetailsScreen() {
           contentContainerStyle={styles.container}
           keyboardShouldPersistTaps="always"
           scrollEnabled={!isTagInputFocused}
+          nestedScrollEnabled={true}
         >
           {/* Images Carousel */}
           <View style={styles.carouselContainer}>
@@ -417,20 +418,9 @@ export default function ItemDetailsScreen() {
               <TagInput
                 tags={tags}
                 onChangeTags={setTags}
-                label=""
-                containerRef={tagInputContainerRef}
-                onFocusChange={setIsTagInputFocused}
-                onFocus={() => {
-                  setTimeout(() => {
-                    tagInputContainerRef.current?.measureLayout(
-                      scrollViewRef.current as any,
-                      (x, y) => {
-                        scrollViewRef.current?.scrollTo({ y: Math.max(0, y - TAG_INPUT_SCROLL_OFFSET), animated: true });
-                      },
-                      () => { }
-                    );
-                  }, 300);
-                }}
+                label="" // ItemDetailsScreen has its own label header
+                onInteractionStart={() => setIsTagInputFocused(true)}
+                onInteractionEnd={() => setIsTagInputFocused(false)}
               />
             ) : item.tags.length > 0 ? (
               <View style={styles.tagContainer}>

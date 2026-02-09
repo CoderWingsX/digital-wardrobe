@@ -157,7 +157,7 @@ export default function SettingsScreen() {
     await runWithLoading('export', async () => {
       const data = await exportData();
       const jsonString = JSON.stringify(data, null, 2);
-      
+
       try {
         await Share.share({
           message: jsonString,
@@ -207,145 +207,145 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface }} edges={['bottom']}>
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Appearance</Text>
-        <View style={styles.themeSelector}>
-          {renderThemeOption('system', 'System')}
-          {renderThemeOption('light', 'Light')}
-          {renderThemeOption('dark', 'Dark')}
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Appearance</Text>
+          <View style={styles.themeSelector}>
+            {renderThemeOption('system', 'System')}
+            {renderThemeOption('light', 'Light')}
+            {renderThemeOption('dark', 'Dark')}
+          </View>
         </View>
-      </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>App Info</Text>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Schema Version</Text>
-          <Text style={styles.infoValue}>v{schemaVersion}</Text>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>App Info</Text>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Schema Version</Text>
+            <Text style={styles.infoValue}>v{schemaVersion}</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Items</Text>
+            <Text style={styles.infoValue}>{items.length}</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Categories</Text>
+            <Text style={styles.infoValue}>{categories.length}</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Tags</Text>
+            <Text style={styles.infoValue}>{allTags.length}</Text>
+          </View>
         </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Items</Text>
-          <Text style={styles.infoValue}>{items.length}</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Categories</Text>
-          <Text style={styles.infoValue}>{categories.length}</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Tags</Text>
-          <Text style={styles.infoValue}>{allTags.length}</Text>
-        </View>
-      </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Database Stats</Text>
-        {stats ? (
-          <>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Total Items</Text>
-              <Text style={styles.infoValue}>{stats.itemCount}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Total Tags</Text>
-              <Text style={styles.infoValue}>{stats.tagCount}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Total Images</Text>
-              <Text style={styles.infoValue}>{stats.imageCount}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Deleted (pending vacuum)</Text>
-              <Text style={styles.infoValue}>{stats.deletedItemCount}</Text>
-            </View>
-          </>
-        ) : (
-          <Text style={styles.infoHint}>Tap refresh to load stats</Text>
-        )}
-        {renderButton('stats', 'Refresh Stats', handleRefreshStats)}
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Maintenance</Text>
-        <Text style={styles.sectionHint}>Keep your database clean and optimized</Text>
-        {renderButton('validate', 'Validate Integrity', handleValidateIntegrity)}
-        {renderButton('cleanupImages', 'Cleanup Orphaned Images', handleCleanupImages)}
-        {renderButton('cleanupRecords', 'Cleanup Orphaned Records', handleCleanupRecords)}
-        {renderButton('vacuum', 'Vacuum Database', handleVacuum, true)}
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Data</Text>
-        {renderButton('export', 'Export Data (JSON)', handleExportData)}
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Test Data</Text>
-        <Text style={styles.sectionHint}>
-          Load sample items to test search and filtering
-        </Text>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Available Items</Text>
-          <Text style={styles.infoValue}>{testDataInfo.total}</Text>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Database Stats</Text>
+          {stats ? (
+            <>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Total Items</Text>
+                <Text style={styles.infoValue}>{stats.itemCount}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Total Tags</Text>
+                <Text style={styles.infoValue}>{stats.tagCount}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Total Images</Text>
+                <Text style={styles.infoValue}>{stats.imageCount}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Deleted (pending vacuum)</Text>
+                <Text style={styles.infoValue}>{stats.deletedItemCount}</Text>
+              </View>
+            </>
+          ) : (
+            <Text style={styles.infoHint}>Tap refresh to load stats</Text>
+          )}
+          {renderButton('stats', 'Refresh Stats', handleRefreshStats)}
         </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Currently Loaded</Text>
-          <Text style={styles.infoValue}>{testDataCount}</Text>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Maintenance</Text>
+          <Text style={styles.sectionHint}>Keep your database clean and optimized</Text>
+          {renderButton('validate', 'Validate Integrity', handleValidateIntegrity)}
+          {renderButton('cleanupImages', 'Cleanup Orphaned Images', handleCleanupImages)}
+          {renderButton('cleanupRecords', 'Cleanup Orphaned Records', handleCleanupRecords)}
+          {renderButton('vacuum', 'Vacuum Database', handleVacuum, true)}
         </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Categories</Text>
-          <Text style={styles.infoValue}>{testDataInfo.categories.join(', ')}</Text>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Data</Text>
+          {renderButton('export', 'Export Data (JSON)', handleExportData)}
         </View>
-        {renderButton('loadTest', `Load Test Data (~${Math.ceil(testDataInfo.total / 2)} items)`, () => {
-          setLoadTestDialogVisible(true);
-        })}
-        
-        <CustomDialog
-          visible={loadTestDialogVisible}
-          title="Load Test Data"
-          message="This will download images and add test items to your wardrobe. Continue?"
-          onDismiss={() => setLoadTestDialogVisible(false)}
-          buttons={[
-            {
-              label: 'Load (with images)',
-              onPress: () => handleLoadTestData(true),
-            },
-            {
-              label: 'Load (no images)',
-              onPress: () => handleLoadTestData(false),
-            },
-            {
-              label: 'Cancel',
-              style: 'cancel',
-              onPress: () => setLoadTestDialogVisible(false),
-            },
-          ]}
-        />
-        {renderButton('unloadTest', 'Remove All Test Data', async () => {
-          if (testDataCount === 0) {
-            Alert.alert('No Test Data', 'There is no test data to remove.');
-            return;
-          }
-          Alert.alert(
-            'Remove Test Data',
-            `This will remove ${testDataCount} test items and their images. Continue?`,
-            [
-              { text: 'Cancel', style: 'cancel' },
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Test Data</Text>
+          <Text style={styles.sectionHint}>
+            Load sample items to test search and filtering
+          </Text>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Available Items</Text>
+            <Text style={styles.infoValue}>{testDataInfo.total}</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Currently Loaded</Text>
+            <Text style={styles.infoValue}>{testDataCount}</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Categories</Text>
+            <Text style={styles.infoValue}>{testDataInfo.categories.join(', ')}</Text>
+          </View>
+          {renderButton('loadTest', `Load Test Data (~${Math.ceil(testDataInfo.total / 2)} items)`, () => {
+            setLoadTestDialogVisible(true);
+          })}
+
+          <CustomDialog
+            visible={loadTestDialogVisible}
+            title="Load Test Data"
+            message="This will download images and add test items to your wardrobe. Continue?"
+            onDismiss={() => setLoadTestDialogVisible(false)}
+            buttons={[
               {
-                text: 'Remove',
-                style: 'destructive',
-                onPress: async () => {
-                  await runWithLoading('unloadTest', async () => {
-                    const result = await unloadTestData();
-                    await refresh();
-                    Alert.alert('Test Data Removed', `Removed: ${result.removed} items`);
-                  });
-                },
+                label: 'Load (with images)',
+                onPress: () => handleLoadTestData(true),
               },
-            ]
-          );
-        }, true)}
-      </View>
-    </ScrollView>
+              {
+                label: 'Load (no images)',
+                onPress: () => handleLoadTestData(false),
+              },
+              {
+                label: 'Cancel',
+                style: 'cancel',
+                onPress: () => setLoadTestDialogVisible(false),
+              },
+            ]}
+          />
+          {renderButton('unloadTest', 'Remove All Test Data', async () => {
+            if (testDataCount === 0) {
+              Alert.alert('No Test Data', 'There is no test data to remove.');
+              return;
+            }
+            Alert.alert(
+              'Remove Test Data',
+              `This will remove ${testDataCount} test items and their images. Continue?`,
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Remove',
+                  style: 'destructive',
+                  onPress: async () => {
+                    await runWithLoading('unloadTest', async () => {
+                      const result = await unloadTestData();
+                      await refresh();
+                      Alert.alert('Test Data Removed', `Removed: ${result.removed} items`);
+                    });
+                  },
+                },
+              ]
+            );
+          }, true)}
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }

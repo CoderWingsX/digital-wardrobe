@@ -1,6 +1,6 @@
 // src/components/TagInput.tsx
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
     View,
     Text,
@@ -8,25 +8,30 @@ import {
     TouchableOpacity,
     ScrollView,
     StyleSheet,
-    FlatList,
-    Keyboard,
-    TouchableWithoutFeedback,
+    Modal,
+    KeyboardAvoidingView,
+    Platform,
     Pressable,
+    Keyboard
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useDatabase } from '../contexts/DatabaseContext';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-export const TAG_INPUT_SCROLL_OFFSET = 40;
+export const TAG_INPUT_SCROLL_OFFSET = 0; // No longer needed, but kept for compatibility if imported elsewhere
 
 interface TagInputProps {
     tags: string[];
     onChangeTags: (tags: string[]) => void;
     label?: string;
     placeholder?: string;
+    // These props might be deprecated but kept to avoid breaking calls immediately
     onFocus?: () => void;
     containerRef?: React.RefObject<View | null>;
     onFocusChange?: (focused: boolean) => void;
+    onInteractionStart?: () => void;
+    onInteractionEnd?: () => void;
 }
 
 export default function TagInput({
@@ -34,15 +39,23 @@ export default function TagInput({
     onChangeTags,
     label = 'Tags',
     placeholder = 'Type to add tags...',
-    onFocus,
-    containerRef,
-    onFocusChange,
+    onInteractionStart,
+    onInteractionEnd,
 }: TagInputProps) {
     const { colors } = useTheme();
     const { allTags } = useDatabase();
+    const [modalVisible, setModalVisible] = useState(false);
     const [inputText, setInputText] = useState('');
-    const [isFocused, setIsFocused] = useState(false);
-    const tagScrollViewRef = React.useRef<ScrollView>(null);
+    const mainTagScrollViewRef = useRef<ScrollView>(null);
+    const modalTagScrollViewRef = useRef<ScrollView>(null);
+
+    // Auto-scroll to bottom when tags are added
+    useEffect(() => {
+        setTimeout(() => {
+            mainTagScrollViewRef.current?.scrollToEnd({ animated: true });
+            modalTagScrollViewRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+    }, [tags.length, modalVisible]); // Also scroll when modal opens
 
     // Filter suggestions based on input
     const suggestions = useMemo(() => {
@@ -56,19 +69,6 @@ export default function TagInput({
             )
             .slice(0, 20); // Limit suggestions
     }, [inputText, allTags, tags]);
-
-    // Notify parent about focus state
-    React.useEffect(() => {
-        onFocusChange?.(isFocused);
-    }, [isFocused, onFocusChange]);
-
-    // Reliable auto-scroll to bottom when tags are added
-    React.useEffect(() => {
-        // Use a small timeout to ensure layout has updated
-        setTimeout(() => {
-            tagScrollViewRef.current?.scrollToEnd({ animated: true });
-        }, 100);
-    }, [tags.length]);
 
     const addTag = (tag: string) => {
         const trimmed = tag.trim();
@@ -95,119 +95,146 @@ export default function TagInput({
         setInputText(text);
     };
 
-    const handleKeyPress = (e: any) => {
-        // Keep handleKeyPress for other behaviors if needed, 
-        // but handleInputChange now handles space/comma to ensure clearing
-        if (e.nativeEvent.key === 'Enter') {
-            addTag(inputText);
-        }
-    };
-
     return (
-        <View style={styles.container} ref={containerRef}>
-            {label && (
-                <Pressable onPress={() => Keyboard.dismiss()}>
-                    <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
-                </Pressable>
-            )}
+        <View style={styles.container}>
+            {/* Main View: Label + Tags Display + Add Button */}
+            {label ? <Text style={[styles.label, { color: colors.text }]}>{label}</Text> : null}
 
-            {tags.length > 0 && (
-                <View style={[styles.bubblesWrapper, { borderColor: colors.border }]}>
-                    <ScrollView
-                        ref={tagScrollViewRef}
-                        horizontal={false}
-                        style={styles.bubbleScroll}
-                        contentContainerStyle={styles.bubbleContainer}
-                        nestedScrollEnabled={true}
-                        keyboardDismissMode="none"
-                        keyboardShouldPersistTaps="always"
-                        onContentSizeChange={() => tagScrollViewRef.current?.scrollToEnd({ animated: true })}
-                    >
-                        {tags.map((tag) => (
-                            <View
-                                key={tag}
-                                style={[
-                                    styles.bubble,
-                                    {
-                                        backgroundColor: colors.primary + '20',
-                                        borderColor: colors.primary + '40',
-                                    },
-                                ]}
-                            >
-                                <Text style={[styles.tagText, { color: colors.primary }]}>{tag}</Text>
-                                <TouchableOpacity onPress={() => removeTag(tag)} style={styles.removeButton}>
-                                    <Ionicons name="close-circle" size={16} color={colors.primary} />
-                                </TouchableOpacity>
-                            </View>
-                        ))}
-                    </ScrollView>
-                </View>
-            )}
-
-            <View
-                style={[
-                    styles.inputWrapper,
-                    {
-                        backgroundColor: colors.surface,
-                        borderColor: isFocused ? colors.primary : colors.border,
-                    },
-                ]}
-            >
-                <TextInput
-                    style={[styles.input, { color: colors.text, flex: 1 }]}
-                    value={inputText}
-                    onChangeText={handleInputChange}
-                    onSubmitEditing={() => addTag(inputText)}
-                    onKeyPress={handleKeyPress}
-                    onFocus={() => {
-                        setIsFocused(true);
-                        onFocus?.();
-                    }}
-                    onBlur={() => setTimeout(() => setIsFocused(false), 200)}
-                    placeholder={placeholder}
-                    placeholderTextColor={colors.textMuted}
-                    blurOnSubmit={false}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                />
-                {isFocused && (
-                    <TouchableOpacity
-                        onPress={() => Keyboard.dismiss()}
-                        style={styles.dismissButton}
-                    >
-                        <Ionicons name="chevron-down-circle" size={24} color={colors.primary} />
-                    </TouchableOpacity>
+            <View style={styles.tagsDisplayContainer}>
+                {tags.length > 0 ? (
+                    <View style={[styles.bubblesWrapper, { borderColor: colors.border }]}>
+                        <ScrollView
+                            ref={mainTagScrollViewRef}
+                            nestedScrollEnabled={true}
+                            style={styles.bubbleScroll}
+                            contentContainerStyle={styles.bubbleContainer}
+                            onContentSizeChange={() => mainTagScrollViewRef.current?.scrollToEnd({ animated: true })}
+                            onTouchStart={onInteractionStart}
+                            onTouchEnd={onInteractionEnd}
+                            onMomentumScrollEnd={onInteractionEnd}
+                        >
+                            {tags.map((tag) => (
+                                <View key={tag} style={[styles.displayBubble, { backgroundColor: colors.primary + '20', borderColor: colors.primary + '40' }]}>
+                                    <Text style={[styles.tagText, { color: colors.primary }]}>{tag}</Text>
+                                </View>
+                            ))}
+                        </ScrollView>
+                    </View>
+                ) : (
+                    <Text style={{ color: colors.textMuted, marginBottom: 8 }}>No tags selected</Text>
                 )}
+
+                <TouchableOpacity
+                    style={[styles.addButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                    onPress={() => setModalVisible(true)}
+                >
+                    <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
+                    <Text style={[styles.addButtonText, { color: colors.primary }]}>Add / Edit Tags</Text>
+                </TouchableOpacity>
             </View>
 
-            {/* Suggestion List */}
-            {isFocused && suggestions.length > 0 && (
-                <ScrollView
-                    style={[styles.suggestionList, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                    keyboardShouldPersistTaps="always"
-                    keyboardDismissMode="none"
-                    nestedScrollEnabled={true}
-                >
-                    {suggestions.map((suggestion) => (
-                        <TouchableOpacity
-                            key={suggestion}
-                            style={[styles.suggestionItem, { borderBottomColor: colors.border }]}
-                            onPress={() => addTag(suggestion)}
-                        >
-                            <Ionicons name="pricetag-outline" size={16} color={colors.textMuted} style={{ marginRight: 8 }} />
-                            <Text style={{ color: colors.text }}>{suggestion}</Text>
-                        </TouchableOpacity>
-                    ))}
-                </ScrollView>
-            )}
+            {/* Modal for Editing Tags */}
+            <Modal
+                animationType="slide"
+                transparent={false} // Full screen modal
+                visible={modalVisible}
+                onRequestClose={() => setModalVisible(false)} // Android back button
+                presentationStyle="pageSheet" // iOS card style
+            >
+                <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+                    <KeyboardAvoidingView
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        style={{ flex: 1 }}
+                    >
+                        {/* Modal Header */}
+                        <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+                            <Text style={[styles.modalTitle, { color: colors.text }]}>Manage Tags</Text>
+                            <TouchableOpacity onPress={() => setModalVisible(false)}>
+                                <Text style={[styles.doneButtonText, { color: colors.primary }]}>Done</Text>
+                            </TouchableOpacity>
+                        </View>
 
-            {/* Spacer for keyboard visibility - interactive to dismiss keyboard */}
-            {isFocused && (
-                <Pressable
-                    onPress={() => Keyboard.dismiss()}
-                    style={{ height: 200 }}
-                />
-            )}
+                        <ScrollView
+                            style={{ flex: 1 }}
+                            keyboardShouldPersistTaps="handled"
+                            contentContainerStyle={{ padding: 16 }}
+                        >
+                            {/* Input Field */}
+                            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>ADD NEW TAG</Text>
+                            <View style={[styles.inputWrapper, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                                <TextInput
+                                    style={[styles.input, { color: colors.text }]}
+                                    value={inputText}
+                                    onChangeText={handleInputChange}
+                                    onSubmitEditing={() => addTag(inputText)}
+                                    placeholder={placeholder}
+                                    placeholderTextColor={colors.textMuted}
+                                    autoCapitalize="none"
+                                    autoCorrect={false}
+                                    autoFocus={true}
+                                />
+                                {inputText.length > 0 && (
+                                    <TouchableOpacity onPress={() => addTag(inputText)}>
+                                        <Ionicons name="arrow-up-circle" size={24} color={colors.primary} />
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+
+                            {/* Suggestions */}
+                            {suggestions.length > 0 && (
+                                <View style={styles.suggestionsContainer}>
+                                    <Text style={[styles.sectionHeader, { color: colors.textSecondary, marginTop: 16 }]}>SUGGESTIONS</Text>
+                                    <ScrollView horizontal keyboardShouldPersistTaps="always" style={{ marginTop: 8 }}>
+                                        {suggestions.map((suggestion) => (
+                                            <TouchableOpacity
+                                                key={suggestion}
+                                                style={[styles.suggestionBubble, { borderColor: colors.border, backgroundColor: colors.surface }]}
+                                                onPress={() => addTag(suggestion)}
+                                            >
+                                                <Ionicons name="add" size={14} color={colors.textMuted} style={{ marginRight: 4 }} />
+                                                <Text style={{ color: colors.text }}>{suggestion}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </ScrollView>
+                                </View>
+                            )}
+
+                            {/* Current Selected Tags (with Remove option) */}
+                            <Text style={[styles.sectionHeader, { color: colors.textSecondary, marginTop: 24 }]}>SELECTED TAGS</Text>
+                            <View style={[styles.bubblesWrapper, { borderColor: colors.border }]}>
+                                <ScrollView
+                                    ref={modalTagScrollViewRef}
+                                    nestedScrollEnabled={true}
+                                    style={styles.bubbleScroll}
+                                    contentContainerStyle={styles.bubbleContainer}
+                                    onContentSizeChange={() => modalTagScrollViewRef.current?.scrollToEnd({ animated: true })}
+                                >
+                                    {tags.map((tag) => (
+                                        <TouchableOpacity
+                                            key={tag}
+                                            style={[
+                                                styles.bubble,
+                                                {
+                                                    backgroundColor: colors.primary + '20',
+                                                    borderColor: colors.primary + '40',
+                                                },
+                                            ]}
+                                            onPress={() => removeTag(tag)}
+                                        >
+                                            <Text style={[styles.tagText, { color: colors.primary }]}>{tag}</Text>
+                                            <Ionicons name="close-circle" size={16} color={colors.primary} style={styles.removeIcon} />
+                                        </TouchableOpacity>
+                                    ))}
+                                    {tags.length === 0 && (
+                                        <Text style={{ color: colors.textMuted, fontStyle: 'italic', padding: 8 }}>No tags selected yet.</Text>
+                                    )}
+                                </ScrollView>
+                            </View>
+
+                        </ScrollView>
+                    </KeyboardAvoidingView>
+                </SafeAreaView>
+            </Modal>
         </View>
     );
 }
@@ -215,23 +242,22 @@ export default function TagInput({
 const styles = StyleSheet.create({
     container: {
         marginBottom: 15,
-        zIndex: 10, // Ensure suggestions are above other elements
     },
     label: {
         fontSize: 14,
         fontWeight: '600',
         marginBottom: 8,
     },
-    inputWrapper: {
+    tagsDisplayContainer: {
+        flexDirection: 'column',
+    },
+    tagContainer: {
         flexDirection: 'row',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderRadius: 8,
-        minHeight: 50,
-        paddingHorizontal: 12,
+        flexWrap: 'wrap',
+        marginBottom: 8,
     },
     bubblesWrapper: {
-        maxHeight: 85,
+        maxHeight: 150, // Approx 4 rows
         marginBottom: 8,
         borderWidth: 1,
         borderRadius: 8,
@@ -245,7 +271,7 @@ const styles = StyleSheet.create({
         flexWrap: 'wrap',
         paddingVertical: 4,
     },
-    bubble: {
+    displayBubble: {
         flexDirection: 'row',
         alignItems: 'center',
         borderRadius: 16,
@@ -255,38 +281,81 @@ const styles = StyleSheet.create({
         marginBottom: 8,
         borderWidth: 1,
     },
+    bubble: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderRadius: 16,
+        paddingHorizontal: 10,
+        paddingVertical: 8, // Slightly larger touch area for removal
+        marginRight: 8,
+        marginBottom: 8,
+        borderWidth: 1,
+    },
     tagText: {
         fontSize: 14,
         fontWeight: '500',
     },
-    removeButton: {
-        marginLeft: 4,
+    removeIcon: {
+        marginLeft: 6,
+    },
+    addButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 10,
+        borderWidth: 1,
+        borderStyle: 'dashed',
+        borderRadius: 8,
+        justifyContent: 'center',
+    },
+    addButtonText: {
+        marginLeft: 8,
+        fontWeight: '600',
+    },
+    // Modal Styles
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 16,
+        borderBottomWidth: 1,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+    },
+    doneButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    sectionHeader: {
+        fontSize: 12,
+        fontWeight: '600',
+        marginBottom: 8,
+        letterSpacing: 1,
+    },
+    inputWrapper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderRadius: 8,
+        minHeight: 50,
+        paddingHorizontal: 12,
     },
     input: {
+        flex: 1,
         fontSize: 16,
         height: 40,
     },
-    suggestionList: {
-        marginTop: 8,
-        borderRadius: 8,
-        borderWidth: 1,
-        elevation: 4,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        zIndex: 100,
-        overflow: 'hidden',
-        maxHeight: 215, // Exactly 5 rows (~43px each)
+    suggestionsContainer: {
+        // marginTop: 8
     },
-    suggestionItem: {
+    suggestionBubble: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 12,
-        borderBottomWidth: 1,
-    },
-    dismissButton: {
-        marginLeft: 8,
-        padding: 4,
-    },
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 20,
+        borderWidth: 1,
+        marginRight: 8,
+    }
 });

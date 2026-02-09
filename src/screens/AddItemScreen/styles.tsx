@@ -2,7 +2,8 @@ import { StyleSheet } from 'react-native';
 import { ThemeColors } from '../../contexts/ThemeContext';
 
 export const createStyles = (colors: ThemeColors, bottomInset: number = 0) => StyleSheet.create({
-  container: { flex: 1, padding: 20, paddingBottom: bottomInset + 20, backgroundColor: colors.background },
+  container: { flex: 1, backgroundColor: colors.background },
+  contentContainer: { padding: 20, paddingBottom: bottomInset + 20 },
   label: {
     fontSize: 14,
     fontWeight: '500',
