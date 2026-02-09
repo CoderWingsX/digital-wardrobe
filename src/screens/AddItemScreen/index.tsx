@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   TextInput as RNTextInput,
+  TouchableOpacity,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDatabase } from '../../contexts/DatabaseContext';
@@ -21,6 +22,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types';
 import ImagePickerButton from '../../components/ImagePickerButton';
 import { saveImageLocally, getLocalImageUri } from '../../lib/filesystem';
+import CategoryPicker from '../../components/CategoryPicker';
+import TagInput, { TAG_INPUT_SCROLL_OFFSET } from '../../components/TagInput';
 import { createStyles } from './styles';
 
 type AddItemScreenNavigationProp = NativeStackNavigationProp<
@@ -35,15 +38,22 @@ export default function AddItemScreen() {
   const styles = createStyles(colors, insets.bottom);
   const scrollViewRef = useRef<ScrollView>(null);
   const tagsInputRef = useRef<RNTextInput>(null);
+  const tagInputContainerRef = useRef<View>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [metadata, setMetadata] = useState<{ key: string; value: string }[]>(
-    []
+    [
+      { key: 'Color', value: '' },
+      { key: 'Size', value: '' },
+      { key: 'Brand', value: '' },
+      { key: 'Material', value: '' },
+    ]
   );
-  const [tags, setTags] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
   const [images, setImages] = useState<string[]>([]);
   const [multiAdd, setMultiAdd] = useState(false);
+  const [isTagInputFocused, setIsTagInputFocused] = useState(false);
 
   const navigation = useNavigation<AddItemScreenNavigationProp>();
 
@@ -63,20 +73,23 @@ export default function AddItemScreen() {
     setMetadata(newMeta);
   };
 
+  const removeImage = (idx: number) => {
+    setImages(images.filter((_, i) => i !== idx));
+  };
+
   async function handleAddItem() {
-    if (!name || !description || !category) {
+    if (!name || !category) {
       Alert.alert('Validation', 'Please fill in all required fields');
       return false;
     }
 
     try {
       const metaObj = Object.fromEntries(
-        metadata.filter((m) => m.key).map((m) => [m.key, m.value])
+        metadata
+          .filter((m) => m.key && m.value.trim() !== '') // Filter out empty values
+          .map((m) => [m.key, m.value])
       );
-      const tagArr = tags
-        .split(',')
-        .map((t) => t.trim())
-        .filter((t) => t.length > 0);
+      const tagArr = tags;
 
       // Save images permanently
       const savedImageUris: string[] = [];
@@ -107,8 +120,13 @@ export default function AddItemScreen() {
         setName('');
         setDescription('');
         setCategory('');
-        setMetadata([]);
-        setTags('');
+        setMetadata([
+          { key: 'Color', value: '' },
+          { key: 'Size', value: '' },
+          { key: 'Brand', value: '' },
+          { key: 'Material', value: '' },
+        ]);
+        setTags([]);
         setImages([]);
       } catch (err) {
         console.error(err);
@@ -121,14 +139,15 @@ export default function AddItemScreen() {
   }
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container} 
+    <KeyboardAvoidingView
+      style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
-      <ScrollView 
+      <ScrollView
         ref={scrollViewRef}
-        keyboardShouldPersistTaps="handled"
+        keyboardShouldPersistTaps="always"
+        scrollEnabled={!isTagInputFocused}
         contentContainerStyle={{ paddingBottom: 40 }}
       >
         <Text style={styles.label}>
@@ -141,9 +160,9 @@ export default function AddItemScreen() {
           value={name}
           onChangeText={setName}
         />
-        
+
         <Text style={styles.label}>
-          Description <Text style={styles.required}>*</Text>
+          Description
         </Text>
         <TextInput
           style={styles.input}
@@ -152,16 +171,11 @@ export default function AddItemScreen() {
           value={description}
           onChangeText={setDescription}
         />
-        
-        <Text style={styles.label}>
-          Category <Text style={styles.required}>*</Text>
-        </Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter category"
-          placeholderTextColor={colors.textMuted}
+
+        <CategoryPicker
           value={category}
-          onChangeText={setCategory}
+          onSelect={setCategory}
+          required
         />
 
         <Text style={styles.sectionTitle}>Metadata</Text>
@@ -191,29 +205,40 @@ export default function AddItemScreen() {
         <Button title="+ Add Metadata Field" onPress={addMetadataField} />
 
         <Text style={styles.sectionTitle}>Images</Text>
-        <ScrollView horizontal style={{ marginVertical: 10 }}>
+        <ScrollView horizontal style={styles.imageContainer}>
           {images.map((uri, idx) => (
-            <Image
-              key={idx}
-              source={{ uri: getLocalImageUri(uri) }}
-              style={{ width: 100, height: 100, marginRight: 10, borderRadius: 8 }}
-            />
+            <View key={idx} style={styles.imageWrapper}>
+              <Image
+                source={{ uri: getLocalImageUri(uri) }}
+                style={styles.imagePreview}
+              />
+              <TouchableOpacity
+                style={styles.deleteImageButton}
+                onPress={() => removeImage(idx)}
+              >
+                <Text style={styles.deleteImageText}>✕</Text>
+              </TouchableOpacity>
+            </View>
           ))}
         </ScrollView>
         <ImagePickerButton onImageSelected={(uri) => setImages([...images, uri])} />
 
-        <Text style={styles.sectionTitle}>Tags</Text>
-        <TextInput
-          ref={tagsInputRef}
-          style={styles.input}
-          placeholder="Tags (comma-separated)"
-          placeholderTextColor={colors.textMuted}
-          value={tags}
-          onChangeText={setTags}
+        <TagInput
+          tags={tags}
+          onChangeTags={setTags}
+          containerRef={tagInputContainerRef}
+          onFocusChange={setIsTagInputFocused}
           onFocus={() => {
+            // Wait for keyboard and layout
             setTimeout(() => {
-              scrollViewRef.current?.scrollToEnd({ animated: true });
-            }, 100);
+              tagInputContainerRef.current?.measureLayout(
+                scrollViewRef.current as any,
+                (x, y) => {
+                  scrollViewRef.current?.scrollTo({ y: Math.max(0, y - TAG_INPUT_SCROLL_OFFSET), animated: true });
+                },
+                () => { } // error callback
+              );
+            }, 300);
           }}
         />
 
