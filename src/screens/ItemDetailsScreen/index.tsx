@@ -28,7 +28,7 @@ import ImagePickerButton from '../../components/ImagePickerButton';
 import { saveImageLocally, deleteImageLocally, getLocalImageUri } from '../../lib/filesystem';
 import ImageViewer from 'react-native-image-zoom-viewer';
 import CategoryPicker from '../../components/CategoryPicker';
-import TagInput from '../../components/TagInput';
+import TagInput, { TAG_INPUT_SCROLL_OFFSET } from '../../components/TagInput';
 import { createStyles } from './styles';
 
 type ItemDetailsRouteProp = RouteProp<RootStackParamList, 'ItemDetails'>;
@@ -63,8 +63,10 @@ export default function ItemDetailsScreen() {
   const [images, setImages] = useState<string[]>([]);
   const [fullScreenImageIndex, setFullScreenImageIndex] = useState<number | null>(null);
   const [activeCarouselIndex, setActiveCarouselIndex] = useState(0);
+  const [isTagInputFocused, setIsTagInputFocused] = useState(false);
   const carouselRef = useRef<FlatList>(null);
   const scrollViewRef = useRef<ScrollView>(null);
+  const tagInputContainerRef = useRef<View>(null);
   const isDeletingRef = useRef(false);
 
   // TODO?: Offload to SQL query with WHERE
@@ -250,7 +252,8 @@ export default function ItemDetailsScreen() {
         <ScrollView
           ref={scrollViewRef}
           contentContainerStyle={styles.container}
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps="always"
+          scrollEnabled={!isTagInputFocused}
         >
           {/* Images Carousel */}
           <View style={styles.carouselContainer}>
@@ -415,9 +418,17 @@ export default function ItemDetailsScreen() {
                 tags={tags}
                 onChangeTags={setTags}
                 label=""
+                containerRef={tagInputContainerRef}
+                onFocusChange={setIsTagInputFocused}
                 onFocus={() => {
                   setTimeout(() => {
-                    scrollViewRef.current?.scrollToEnd({ animated: true });
+                    tagInputContainerRef.current?.measureLayout(
+                      scrollViewRef.current as any,
+                      (x, y) => {
+                        scrollViewRef.current?.scrollTo({ y: Math.max(0, y - TAG_INPUT_SCROLL_OFFSET), animated: true });
+                      },
+                      () => { }
+                    );
                   }, 300);
                 }}
               />

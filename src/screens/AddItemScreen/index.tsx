@@ -23,7 +23,7 @@ import { RootStackParamList } from '../../types';
 import ImagePickerButton from '../../components/ImagePickerButton';
 import { saveImageLocally, getLocalImageUri } from '../../lib/filesystem';
 import CategoryPicker from '../../components/CategoryPicker';
-import TagInput from '../../components/TagInput';
+import TagInput, { TAG_INPUT_SCROLL_OFFSET } from '../../components/TagInput';
 import { createStyles } from './styles';
 
 type AddItemScreenNavigationProp = NativeStackNavigationProp<
@@ -38,6 +38,7 @@ export default function AddItemScreen() {
   const styles = createStyles(colors, insets.bottom);
   const scrollViewRef = useRef<ScrollView>(null);
   const tagsInputRef = useRef<RNTextInput>(null);
+  const tagInputContainerRef = useRef<View>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
@@ -52,6 +53,7 @@ export default function AddItemScreen() {
   const [tags, setTags] = useState<string[]>([]);
   const [images, setImages] = useState<string[]>([]);
   const [multiAdd, setMultiAdd] = useState(false);
+  const [isTagInputFocused, setIsTagInputFocused] = useState(false);
 
   const navigation = useNavigation<AddItemScreenNavigationProp>();
 
@@ -144,7 +146,8 @@ export default function AddItemScreen() {
     >
       <ScrollView
         ref={scrollViewRef}
-        keyboardShouldPersistTaps="handled"
+        keyboardShouldPersistTaps="always"
+        scrollEnabled={!isTagInputFocused}
         contentContainerStyle={{ paddingBottom: 40 }}
       >
         <Text style={styles.label}>
@@ -223,10 +226,18 @@ export default function AddItemScreen() {
         <TagInput
           tags={tags}
           onChangeTags={setTags}
+          containerRef={tagInputContainerRef}
+          onFocusChange={setIsTagInputFocused}
           onFocus={() => {
-            // Wait longer for keyboard to open and layout to shift
+            // Wait for keyboard and layout
             setTimeout(() => {
-              scrollViewRef.current?.scrollToEnd({ animated: true });
+              tagInputContainerRef.current?.measureLayout(
+                scrollViewRef.current as any,
+                (x, y) => {
+                  scrollViewRef.current?.scrollTo({ y: Math.max(0, y - TAG_INPUT_SCROLL_OFFSET), animated: true });
+                },
+                () => { } // error callback
+              );
             }, 300);
           }}
         />
