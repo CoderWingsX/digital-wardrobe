@@ -10,6 +10,8 @@ import {
     StyleSheet,
     FlatList,
     Keyboard,
+    TouchableWithoutFeedback,
+    Pressable,
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useDatabase } from '../contexts/DatabaseContext';
@@ -80,15 +82,34 @@ export default function TagInput({
         onChangeTags(tags.filter((t) => t !== tagToRemove));
     };
 
+    const handleInputChange = (text: string) => {
+        // If the last character is a space or comma, add the tag and CLEAR the input
+        if (text.endsWith(' ') || text.endsWith(',')) {
+            const tagToAdd = text.slice(0, -1);
+            if (tagToAdd.trim()) {
+                addTag(tagToAdd);
+            }
+            setInputText(''); // Explicitly clear
+            return;
+        }
+        setInputText(text);
+    };
+
     const handleKeyPress = (e: any) => {
-        if (e.nativeEvent.key === ' ' || e.nativeEvent.key === ',') {
+        // Keep handleKeyPress for other behaviors if needed, 
+        // but handleInputChange now handles space/comma to ensure clearing
+        if (e.nativeEvent.key === 'Enter') {
             addTag(inputText);
         }
     };
 
     return (
         <View style={styles.container} ref={containerRef}>
-            {label && <Text style={[styles.label, { color: colors.text }]}>{label}</Text>}
+            {label && (
+                <Pressable onPress={() => Keyboard.dismiss()}>
+                    <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
+                </Pressable>
+            )}
 
             {tags.length > 0 && (
                 <View style={[styles.bubblesWrapper, { borderColor: colors.border }]}>
@@ -135,7 +156,7 @@ export default function TagInput({
                 <TextInput
                     style={[styles.input, { color: colors.text, flex: 1 }]}
                     value={inputText}
-                    onChangeText={setInputText}
+                    onChangeText={handleInputChange}
                     onSubmitEditing={() => addTag(inputText)}
                     onKeyPress={handleKeyPress}
                     onFocus={() => {
@@ -180,8 +201,13 @@ export default function TagInput({
                 </ScrollView>
             )}
 
-            {/* Spacer for keyboard visibility */}
-            {isFocused && <View style={{ height: 200 }} />}
+            {/* Spacer for keyboard visibility - interactive to dismiss keyboard */}
+            {isFocused && (
+                <Pressable
+                    onPress={() => Keyboard.dismiss()}
+                    style={{ height: 200 }}
+                />
+            )}
         </View>
     );
 }
