@@ -10,8 +10,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
-  TouchableWithoutFeedback,
-  Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDatabase } from '../../contexts/DatabaseContext';
@@ -140,118 +138,117 @@ export default function AddItemScreen() {
   }
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    >
+      <ScrollView
+        ref={scrollViewRef}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        scrollEnabled={!isTagInputFocused}
+        contentContainerStyle={styles.contentContainer}
+        nestedScrollEnabled={true}
       >
-        <ScrollView
-          ref={scrollViewRef}
-          keyboardShouldPersistTaps="handled"
-          scrollEnabled={!isTagInputFocused}
-          contentContainerStyle={styles.contentContainer}
-          nestedScrollEnabled={true}
-        >
-          <StyledInput
-            label="Item Name"
-            required
-            placeholder="Enter item name"
-            value={name}
-            onChangeText={setName}
-          />
+        <StyledInput
+          label="Item Name"
+          required
+          placeholder="Enter item name"
+          value={name}
+          onChangeText={setName}
+        />
 
-          <StyledInput
-            label="Description"
-            placeholder="Enter description"
-            value={description}
-            onChangeText={setDescription}
-            multiline
-          />
+        <StyledInput
+          label="Description"
+          placeholder="Enter description"
+          value={description}
+          onChangeText={setDescription}
+          multiline
+        />
 
-          <CategoryPicker
-            value={category}
-            onSelect={setCategory}
-            required
-          />
+        <CategoryPicker
+          value={category}
+          onSelect={setCategory}
+          required
+        />
 
-          <Text style={styles.sectionTitle}>Metadata</Text>
-          {metadata.map((m, idx) => (
-            <MetadataInput
-              key={idx}
-              itemKey={m.key}
-              value={m.value}
-              onChangeKey={(text) => updateMetadata(idx, text, m.value)}
-              onChangeValue={(text) => updateMetadata(idx, m.key, text)}
-              onRemove={() => removeMetadataField(idx)}
-            />
+        <Text style={styles.sectionTitle}>Metadata</Text>
+        {metadata.map((m, idx) => (
+          <MetadataInput
+            key={idx}
+            itemKey={m.key}
+            value={m.value}
+            onChangeKey={(text) => updateMetadata(idx, text, m.value)}
+            onChangeValue={(text) => updateMetadata(idx, m.key, text)}
+            onRemove={() => removeMetadataField(idx)}
+          />
+        ))}
+        <Button title="+ Add Metadata Field" onPress={addMetadataField} />
+
+        <Text style={styles.sectionTitle}>Images</Text>
+        <ScrollView horizontal style={styles.imageContainer}>
+          {images.map((uri, idx) => (
+            <View key={idx} style={styles.imageWrapper}>
+              <Image
+                source={{ uri: getLocalImageUri(uri) }}
+                style={styles.imagePreview}
+              />
+              <TouchableOpacity
+                style={styles.deleteImageButton}
+                onPress={() => removeImage(idx)}
+              >
+                <Text style={styles.deleteImageText}>✕</Text>
+              </TouchableOpacity>
+            </View>
           ))}
-          <Button title="+ Add Metadata Field" onPress={addMetadataField} />
-
-          <Text style={styles.sectionTitle}>Images</Text>
-          <ScrollView horizontal style={styles.imageContainer}>
-            {images.map((uri, idx) => (
-              <View key={idx} style={styles.imageWrapper}>
-                <Image
-                  source={{ uri: getLocalImageUri(uri) }}
-                  style={styles.imagePreview}
-                />
-                <TouchableOpacity
-                  style={styles.deleteImageButton}
-                  onPress={() => removeImage(idx)}
-                >
-                  <Text style={styles.deleteImageText}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-          </ScrollView>
-          <ImagePickerButton onImageSelected={(uri) => setImages([...images, uri])} />
-
-          <TagInput
-            tags={tags}
-            onChangeTags={setTags}
-            onInteractionStart={() => setIsTagInputFocused(true)}
-            onInteractionEnd={() => setIsTagInputFocused(false)}
-          />
-
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              marginVertical: 10,
-            }}
-          >
-            <Switch value={multiAdd} onValueChange={setMultiAdd} />
-            <Text style={{ marginLeft: 10, color: colors.text }}>Add multiple items</Text>
-          </View>
-          <View style={styles.buttonRow}>
-            <Button
-              title="Save Item"
-              onPress={async () => {
-                const result = await handleAddItem();
-
-                if (!result) return; // if validation failed
-
-                if (!multiAdd) {
-                  // Single add: show a confirmation and go back.
-                  Alert.alert('Success', 'Item added!');
-                  navigation.goBack();
-                  return;
-                }
-
-                // Multi-add: show a non-blocking toast instead of an alert
-                Toast.show({
-                  type: 'success',
-                  text1: 'Saved!',
-                  position: 'bottom', // put it at the bottom
-                  visibilityTime: 1400,
-                  bottomOffset: 60, // distance from bottom (adjust)
-                });
-              }}
-            />
-          </View>
         </ScrollView>
-      </KeyboardAvoidingView>
-    </TouchableWithoutFeedback>
+        <ImagePickerButton onImageSelected={(uri) => setImages([...images, uri])} />
+
+        <TagInput
+          tags={tags}
+          onChangeTags={setTags}
+          onInteractionStart={() => setIsTagInputFocused(true)}
+          onInteractionEnd={() => setIsTagInputFocused(false)}
+        />
+
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginVertical: 10,
+          }}
+        >
+          <Switch value={multiAdd} onValueChange={setMultiAdd} />
+          <Text style={{ marginLeft: 10, color: colors.text }}>Add multiple items</Text>
+        </View>
+        <View style={styles.buttonRow}>
+          <Button
+            title="Save Item"
+            onPress={async () => {
+              const result = await handleAddItem();
+
+              if (!result) return; // if validation failed
+
+              if (!multiAdd) {
+                // Single add: show a confirmation and go back.
+                Alert.alert('Success', 'Item added!');
+                navigation.goBack();
+                return;
+              }
+
+              // Multi-add: show a non-blocking toast instead of an alert
+              Toast.show({
+                type: 'success',
+                text1: 'Saved!',
+                position: 'bottom', // put it at the bottom
+                visibilityTime: 1400,
+                bottomOffset: 60, // distance from bottom (adjust)
+              });
+            }}
+          />
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
