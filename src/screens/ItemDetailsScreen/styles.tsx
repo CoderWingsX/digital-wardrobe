@@ -11,7 +11,13 @@ export const createStyles = (colors: ThemeColors) => StyleSheet.create({
   category: { fontSize: 18, color: colors.textSecondary, marginBottom: 10 },
   description: { fontSize: 16, fontStyle: 'italic', marginBottom: 15, color: colors.textSecondary },
   section: { marginBottom: 15 },
-  sectionTitle: { fontWeight: 'bold', marginBottom: 5, color: colors.text },
+  sectionTitle: {
+    fontWeight: '600',
+    fontSize: 15,
+    marginTop: 16,
+    marginBottom: 8,
+    color: colors.text,
+  },
   label: {
     fontSize: 14,
     fontWeight: '500',
@@ -34,8 +40,9 @@ export const createStyles = (colors: ThemeColors) => StyleSheet.create({
   metaRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 5 },
   buttonRow: {
     flexDirection: 'row',
-    justifyContent: 'space-evenly',
-    marginTop: 15,
+    justifyContent: 'space-between',
+    marginTop: 20,
+    gap: 10,
   },
   metaCard: {
     padding: 10,
@@ -95,11 +102,37 @@ export const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   deleteImageButton: {
     position: 'absolute',
-    top: 5,
-    right: 15,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    top: -5,
+    right: -5,
+    backgroundColor: colors.danger,
     borderRadius: 12,
-    padding: 4,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  deleteImageText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  imageContainer: {
+    marginBottom: 10,
+  },
+  imageWrapper: {
+    position: 'relative',
+    marginRight: 10,
+  },
+  imagePreview: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
   },
   paginationContainer: {
     flexDirection: 'row',

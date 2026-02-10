@@ -239,6 +239,7 @@ export default function TagInput({
 
 const styles = StyleSheet.create({
     container: {
+        marginTop: 16,
         marginBottom: 15,
     },
     label: {

@@ -57,10 +57,11 @@ const styles = StyleSheet.create({
     button: {
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
         padding: 10,
         borderWidth: 1,
         borderRadius: 8,
-        alignSelf: 'center', // Width fits content, centered in parent
+        alignSelf: 'stretch', // Full width
     },
     dashedButton: {
         borderStyle: 'dashed',

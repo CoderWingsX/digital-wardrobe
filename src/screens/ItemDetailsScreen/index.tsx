@@ -257,74 +257,54 @@ export default function ItemDetailsScreen() {
           scrollEnabled={!isTagInputFocused}
           nestedScrollEnabled={true}
         >
-          {/* Images Carousel */}
-          <View style={styles.carouselContainer}>
-            {images.length > 0 && (
-              <>
-                <FlatList
-                  ref={carouselRef}
-                  data={images}
-                  horizontal
-                  pagingEnabled
-                  showsHorizontalScrollIndicator={false}
-                  snapToInterval={Dimensions.get('window').width - 40}
-                  decelerationRate="fast"
-                  onScroll={(event) => {
-                    const slideSize = Dimensions.get('window').width - 40;
-                    const index = Math.round(event.nativeEvent.contentOffset.x / slideSize);
-                    setActiveCarouselIndex(index);
-                  }}
-                  scrollEventThrottle={16}
-                  keyExtractor={(item, idx) => idx.toString()}
-                  renderItem={({ item: uri, index: idx }) => (
-                    <View style={styles.carouselSlide}>
-                      <TouchableOpacity
-                        onPress={() => setFullScreenImageIndex(idx)}
-                        activeOpacity={0.8}
-                      >
-                        <Image
-                          source={{ uri: getLocalImageUri(uri) }}
-                          style={styles.carouselImage}
-                        />
-                      </TouchableOpacity>
-                      {isEditing && (
-                        <TouchableOpacity
-                          style={styles.deleteImageButton}
-                          onPress={() => {
-                            setImages(images.filter((_, i) => i !== idx));
-                          }}
-                        >
-                          <Text style={{ color: 'white', fontWeight: 'bold' }}>X</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  )}
-                />
-                {/* Pagination Dots */}
-                {images.length > 1 && (
-                  <View style={styles.paginationContainer}>
-                    {images.map((_, idx) => (
-                      <View
-                        key={idx}
-                        style={[
-                          styles.paginationDot,
-                          idx === activeCarouselIndex && styles.paginationDotActive,
-                        ]}
+          {/* View Mode: Show carousel first */}
+          {!isEditing && images.length > 0 && (
+            <View style={styles.carouselContainer}>
+              <FlatList
+                ref={carouselRef}
+                data={images}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                snapToInterval={Dimensions.get('window').width - 40}
+                decelerationRate="fast"
+                onScroll={(event) => {
+                  const slideSize = Dimensions.get('window').width - 40;
+                  const index = Math.round(event.nativeEvent.contentOffset.x / slideSize);
+                  setActiveCarouselIndex(index);
+                }}
+                scrollEventThrottle={16}
+                keyExtractor={(item, idx) => idx.toString()}
+                renderItem={({ item: uri, index: idx }) => (
+                  <View style={styles.carouselSlide}>
+                    <TouchableOpacity
+                      onPress={() => setFullScreenImageIndex(idx)}
+                      activeOpacity={0.8}
+                    >
+                      <Image
+                        source={{ uri: getLocalImageUri(uri) }}
+                        style={styles.carouselImage}
                       />
-                    ))}
+                    </TouchableOpacity>
                   </View>
                 )}
-              </>
-            )}
-            {isEditing && (
-              <View style={{ alignItems: 'center' }}>
-                <ImagePickerButton
-                  title="Add Image"
-                  onImageSelected={(uri) => setImages([...images, uri])}
-                />
-              </View>
-            )}
-          </View>
+              />
+              {/* Pagination Dots */}
+              {images.length > 1 && (
+                <View style={styles.paginationContainer}>
+                  {images.map((_, idx) => (
+                    <View
+                      key={idx}
+                      style={[
+                        styles.paginationDot,
+                        idx === activeCarouselIndex && styles.paginationDotActive,
+                      ]}
+                    />
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
 
           {/* Name */}
           {isEditing ? (
@@ -337,17 +317,6 @@ export default function ItemDetailsScreen() {
             />
           ) : (
             <Text style={styles.title}>{item.name}</Text>
-          )}
-
-          {/* Category */}
-          {isEditing ? (
-            <CategoryPicker
-              value={category}
-              onSelect={setCategory}
-              required
-            />
-          ) : (
-            <Text style={styles.category}>{item.category}</Text>
           )}
 
           {/* Description */}
@@ -364,75 +333,105 @@ export default function ItemDetailsScreen() {
             <Text style={styles.description}>{item.description}</Text>
           )}
 
-          {/* Metadata */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Metadata:</Text>
-            {isEditing ? (
-              <>
-                {metadata.map((m, idx) => (
-                  <MetadataInput
-                    key={idx}
-                    itemKey={m.key}
-                    value={m.value}
-                    onChangeKey={(text) => updateMetadataKey(idx, text)}
-                    onChangeValue={(text) => updateMetadataValue(idx, text)}
-                    onRemove={() => removeMetadataField(idx)}
-                  />
-                ))}
-                <View style={{ alignItems: 'center' }}>
-                  <StyledButton
-                    title="Add Field"
-                    icon="add-circle-outline"
-                    buttonStyle="add"
-                    onPress={addMetadataField}
-                  />
-                </View>
-              </>
-            ) : Object.keys(item.metadata).length > 0 ? (
-              Object.entries(item.metadata).map(([k, v]) => (
-                <View key={k} style={styles.metaCard}>
-                  <Text style={styles.metaKey}>{k}</Text>
-                  <Text style={styles.metaValue}>{String(v)}</Text>
-                </View>
-              ))
-            ) : (
-              <Text style={styles.noDataText}>-</Text>
-            )}
-          </View>
+          {/* Category */}
+          {isEditing ? (
+            <CategoryPicker
+              value={category}
+              onSelect={setCategory}
+              required
+            />
+          ) : (
+            <Text style={styles.category}>{item.category}</Text>
+          )}
 
-          {/* Tags */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Tags:</Text>
-            {isEditing ? (
-              <TagInput
-                tags={tags}
-                onChangeTags={setTags}
-                label="" // ItemDetailsScreen has its own label header
-                onInteractionStart={() => setIsTagInputFocused(true)}
-                onInteractionEnd={() => setIsTagInputFocused(false)}
+          {/* Metadata */}
+          <Text style={styles.sectionTitle}>Metadata</Text>
+          {isEditing ? (
+            <>
+              {metadata.map((m, idx) => (
+                <MetadataInput
+                  key={idx}
+                  itemKey={m.key}
+                  value={m.value}
+                  onChangeKey={(text) => updateMetadataKey(idx, text)}
+                  onChangeValue={(text) => updateMetadataValue(idx, text)}
+                  onRemove={() => removeMetadataField(idx)}
+                />
+              ))}
+              <StyledButton
+                title="Add Metadata Field"
+                icon="add-circle-outline"
+                buttonStyle="add"
+                onPress={addMetadataField}
               />
-            ) : item.tags.length > 0 ? (
-              <View style={styles.tagContainer}>
-                {item.tags.map((tag, idx) => (
-                  <View key={idx} style={styles.tagBubble}>
-                    <Text style={styles.tagBubbleText}>{tag}</Text>
+            </>
+          ) : Object.keys(item.metadata).length > 0 ? (
+            Object.entries(item.metadata).map(([k, v]) => (
+              <View key={k} style={styles.metaCard}>
+                <Text style={styles.metaKey}>{k}</Text>
+                <Text style={styles.metaValue}>{String(v)}</Text>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.noDataText}>-</Text>
+          )}
+
+          {/* Images - only show in edit mode */}
+          {isEditing && (
+            <>
+              <Text style={styles.sectionTitle}>Images</Text>
+              <ScrollView horizontal style={styles.imageContainer}>
+                {images.map((uri, idx) => (
+                  <View key={idx} style={styles.imageWrapper}>
+                    <Image
+                      source={{ uri: getLocalImageUri(uri) }}
+                      style={styles.imagePreview}
+                    />
+                    <TouchableOpacity
+                      style={styles.deleteImageButton}
+                      onPress={() => setImages(images.filter((_, i) => i !== idx))}
+                    >
+                      <Text style={styles.deleteImageText}>✕</Text>
+                    </TouchableOpacity>
                   </View>
                 ))}
-              </View>
-            ) : (
-              <Text style={styles.noDataText}>-</Text>
-            )}
-          </View>
+              </ScrollView>
+              <ImagePickerButton
+                title="Pick an Image"
+                onImageSelected={(uri) => setImages([...images, uri])}
+              />
+            </>
+          )}
+
+          {/* Tags */}
+          {isEditing ? (
+            <TagInput
+              tags={tags}
+              onChangeTags={setTags}
+              onInteractionStart={() => setIsTagInputFocused(true)}
+              onInteractionEnd={() => setIsTagInputFocused(false)}
+            />
+          ) : (
+            <>
+              <Text style={styles.sectionTitle}>Tags</Text>
+              {item.tags.length > 0 ? (
+                <View style={styles.tagContainer}>
+                  {item.tags.map((tag, idx) => (
+                    <View key={idx} style={styles.tagBubble}>
+                      <Text style={styles.tagBubbleText}>{tag}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <Text style={styles.noDataText}>-</Text>
+              )}
+            </>
+          )}
 
           {/* Buttons */}
           <View style={styles.buttonRow}>
             {isEditing ? (
               <>
-                <StyledButton
-                  title="Save"
-                  icon="checkmark-circle-outline"
-                  onPress={handleSave}
-                />
                 <StyledButton
                   title="Cancel"
                   icon="close-circle-outline"
@@ -442,19 +441,24 @@ export default function ItemDetailsScreen() {
                     if (item) populateFromItem(item);
                   }}
                 />
+                <StyledButton
+                  title="Save"
+                  icon="checkmark-circle-outline"
+                  onPress={handleSave}
+                />
               </>
             ) : (
               <>
-                <StyledButton
-                  title="Edit"
-                  icon="create-outline"
-                  onPress={() => setIsEditing(true)}
-                />
                 <StyledButton
                   title="Delete"
                   icon="trash-outline"
                   variant="danger"
                   onPress={handleDelete}
+                />
+                <StyledButton
+                  title="Edit"
+                  icon="create-outline"
+                  onPress={() => setIsEditing(true)}
                 />
               </>
             )}

@@ -26,8 +26,8 @@ export const createStyles = (colors: ThemeColors, bottomInset: number = 0) => St
   buttonRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 20,
-    marginTop: 10,
+    marginTop: 20,
+    gap: 10,
   },
   list: { flex: 1, marginTop: 20 },
   item: {
@@ -49,7 +49,7 @@ export const createStyles = (colors: ThemeColors, bottomInset: number = 0) => St
   metaRow: { flexDirection: 'row', alignItems: 'center' },
   modalView: { flex: 1, padding: 16, backgroundColor: colors.background },
   imageContainer: {
-    marginVertical: 10,
+    marginBottom: 10,
   },
   imageWrapper: {
     position: 'relative',

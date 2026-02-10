@@ -160,15 +160,15 @@ export default function HomeScreen() {
       <View style={styles.container}>
         <View style={styles.buttonRow}>
           <StyledButton
-            title="Add Item"
-            icon="add-circle-outline"
-            onPress={() => navigation.navigate('AddItem')}
-          />
-          <StyledButton
             title="Clear All"
             icon="trash-outline"
             variant="danger"
             onPress={handleClearAll}
+          />
+          <StyledButton
+            title="Add Item"
+            icon="add-circle-outline"
+            onPress={() => navigation.navigate('AddItem')}
           />
         </View>
 

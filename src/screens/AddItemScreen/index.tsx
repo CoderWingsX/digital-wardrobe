@@ -184,14 +184,12 @@ export default function AddItemScreen() {
             onRemove={() => removeMetadataField(idx)}
           />
         ))}
-        <View style={{ alignItems: 'center' }}>
-          <StyledButton
-            title="Add Metadata Field"
-            icon="add-circle-outline"
-            buttonStyle="add"
-            onPress={addMetadataField}
-          />
-        </View>
+        <StyledButton
+          title="Add Metadata Field"
+          icon="add-circle-outline"
+          buttonStyle="add"
+          onPress={addMetadataField}
+        />
 
         <Text style={styles.sectionTitle}>Images</Text>
         <ScrollView horizontal style={styles.imageContainer}>
@@ -210,9 +208,7 @@ export default function AddItemScreen() {
             </View>
           ))}
         </ScrollView>
-        <View style={{ alignItems: 'center' }}>
-          <ImagePickerButton onImageSelected={(uri) => setImages([...images, uri])} />
-        </View>
+        <ImagePickerButton onImageSelected={(uri) => setImages([...images, uri])} />
 
         <TagInput
           tags={tags}
@@ -232,6 +228,12 @@ export default function AddItemScreen() {
           <Text style={{ marginLeft: 10, color: colors.text }}>Add multiple items</Text>
         </View>
         <View style={styles.buttonRow}>
+          <StyledButton
+            title="Cancel"
+            icon="close-circle-outline"
+            variant="secondary"
+            onPress={() => navigation.goBack()}
+          />
           <StyledButton
             title="Save Item"
             icon="checkmark-circle-outline"
@@ -256,13 +258,6 @@ export default function AddItemScreen() {
                 bottomOffset: 60, // distance from bottom (adjust)
               });
             }}
-          />
-          <StyledButton
-            title="Cancel"
-            icon="close-circle-outline"
-            variant="secondary"
-            onPress={() => navigation.goBack()}
-            style={{ marginLeft: 10 }}
           />
         </View>
       </ScrollView>

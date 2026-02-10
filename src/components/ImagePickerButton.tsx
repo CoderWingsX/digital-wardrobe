@@ -66,41 +66,80 @@ export default function ImagePickerButton({
             Alert.alert('Error', 'Failed to take photo');
         }
     };
+    const pickImage = async (launcher: typeof ImagePicker.launchCameraAsync | typeof ImagePicker.launchImageLibraryAsync) => {
+        try {
+            let permissionStatus;
+            let permissionRequestFunction;
+            let permissionAlertMessage;
+            let errorMessage;
 
-    const handlePress = () => {
+            if (launcher === ImagePicker.launchCameraAsync) {
+                permissionRequestFunction = ImagePicker.requestCameraPermissionsAsync;
+                permissionAlertMessage = 'Sorry, we need camera permissions to make this work!';
+                errorMessage = 'Failed to take photo';
+            } else {
+                permissionRequestFunction = ImagePicker.requestMediaLibraryPermissionsAsync;
+                permissionAlertMessage = 'Sorry, we need camera roll permissions to make this work!';
+                errorMessage = 'Failed to pick image from library';
+            }
+
+            const { status } = await permissionRequestFunction();
+            permissionStatus = status;
+
+            if (permissionStatus !== 'granted') {
+                Alert.alert(
+                    'Permission needed',
+                    permissionAlertMessage
+                );
+                return;
+            }
+
+            const result = await launcher({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                quality: 0.8,
+            });
+
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+                onImageSelected(result.assets[0].uri);
+            }
+        } catch (err) {
+            console.error('ImagePicker Error:', err);
+            Alert.alert('Error', 'Failed to pick image');
+        }
+    };
+
+    const handlePickImage = () => {
         setDialogVisible(true);
     };
 
     return (
-        <View style={{ alignItems: 'center' }}>
+        <>
             <StyledButton
                 title={title}
                 icon="image-outline"
                 buttonStyle="add"
-                onPress={handlePress}
+                onPress={handlePickImage}
             />
+
             <CustomDialog
                 visible={dialogVisible}
-                title="Select Image"
-                message="Choose an option"
+                title="Choose Image Source"
+                message="Select where you want to pick the image from"
                 onDismiss={() => setDialogVisible(false)}
                 buttons={[
                     {
-                        label: 'Choose from Library',
+                        label: 'Camera',
                         onPress: () => {
                             setDialogVisible(false);
-                            setTimeout(() => {
-                                pickFromLibrary();
-                            }, 300);
+                            pickImage(ImagePicker.launchCameraAsync);
                         },
                     },
                     {
-                        label: 'Take Photo',
+                        label: 'Gallery',
                         onPress: () => {
                             setDialogVisible(false);
-                            setTimeout(() => {
-                                pickFromCamera();
-                            }, 300);
+                            pickImage(ImagePicker.launchImageLibraryAsync);
                         },
                     },
                     {
@@ -110,6 +149,6 @@ export default function ImagePickerButton({
                     },
                 ]}
             />
-        </View>
+        </>
     );
 }
