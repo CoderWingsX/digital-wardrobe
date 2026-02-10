@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import {
   Alert,
   View,
@@ -25,6 +25,7 @@ import StyledInput from '../../components/StyledInput';
 import MetadataInput from '../../components/MetadataInput';
 import StyledButton from '../../components/StyledButton';
 import { createStyles } from './styles';
+import { useUnsavedChangesWarning } from '../../hooks/useUnsavedChangesWarning';
 
 type AddItemScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -54,6 +55,21 @@ export default function AddItemScreen() {
   const [isTagInputFocused, setIsTagInputFocused] = useState(false);
 
   const navigation = useNavigation<AddItemScreenNavigationProp>();
+
+  // Detect if form has unsaved changes
+  const hasUnsavedChanges = useMemo(() => {
+    if (name.trim() !== '') return true;
+    if (description.trim() !== '') return true;
+    if (category !== '') return true;
+    if (images.length > 0) return true;
+    if (tags.length > 0) return true;
+    // Check if any metadata has non-empty values
+    if (metadata.some(m => m.value.trim() !== '')) return true;
+    return false;
+  }, [name, description, category, images, tags, metadata]);
+
+  // Show warning when navigating away with unsaved changes
+  useUnsavedChangesWarning(hasUnsavedChanges);
 
   const addMetadataField = () => {
     setMetadata([...metadata, { key: '', value: '' }]);
