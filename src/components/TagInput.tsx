@@ -174,6 +174,9 @@ export default function TagInput({
                                     </TouchableOpacity>
                                 )}
                             </View>
+                            <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 4, marginLeft: 4 }}>
+                                Spaces not allowed (special characters okay). Press Enter to add.
+                            </Text>
 
                             {/* Suggestions */}
                             {suggestions.length > 0 && (
