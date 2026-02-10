@@ -125,6 +125,17 @@ The detail view shows:
 4. Tap **Save** to confirm
 5. Tap **Cancel** to discard changes
 
+### Unsaved Changes Warning
+
+If you try to navigate away (back button or gesture) while you have unsaved changes, the app will show a confirmation dialog:
+
+- **Keep Editing** - Stay on the screen and continue editing
+- **Discard** - Lose your changes and navigate away
+
+This warning appears when:
+- **Adding items** - Any field has content (name, description, category, images, tags, or metadata)
+- **Editing items** - Any field differs from the original saved values
+
 ---
 
 ## Deleting Items
