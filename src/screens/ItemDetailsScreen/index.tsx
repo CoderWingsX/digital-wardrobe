@@ -5,7 +5,6 @@ import {
   View,
   Text,
   ScrollView,
-  Button,
   Alert,
   ActivityIndicator,
   Image,
@@ -30,6 +29,7 @@ import CategoryPicker from '../../components/CategoryPicker';
 import TagInput from '../../components/TagInput';
 import StyledInput from '../../components/StyledInput';
 import MetadataInput from '../../components/MetadataInput';
+import StyledButton from '../../components/StyledButton';
 import { createStyles } from './styles';
 
 type ItemDetailsRouteProp = RouteProp<RootStackParamList, 'ItemDetails'>;
@@ -317,10 +317,12 @@ export default function ItemDetailsScreen() {
               </>
             )}
             {isEditing && (
-              <ImagePickerButton
-                title="Add Image"
-                onImageSelected={(uri) => setImages([...images, uri])}
-              />
+              <View style={{ alignItems: 'center' }}>
+                <ImagePickerButton
+                  title="Add Image"
+                  onImageSelected={(uri) => setImages([...images, uri])}
+                />
+              </View>
             )}
           </View>
 
@@ -377,7 +379,14 @@ export default function ItemDetailsScreen() {
                     onRemove={() => removeMetadataField(idx)}
                   />
                 ))}
-                <Button title="+ Add Field" onPress={addMetadataField} />
+                <View style={{ alignItems: 'center' }}>
+                  <StyledButton
+                    title="Add Field"
+                    icon="add-circle-outline"
+                    buttonStyle="add"
+                    onPress={addMetadataField}
+                  />
+                </View>
               </>
             ) : Object.keys(item.metadata).length > 0 ? (
               Object.entries(item.metadata).map(([k, v]) => (
@@ -419,10 +428,15 @@ export default function ItemDetailsScreen() {
           <View style={styles.buttonRow}>
             {isEditing ? (
               <>
-                <Button title="Save" onPress={handleSave} />
-                <Button
+                <StyledButton
+                  title="Save"
+                  icon="checkmark-circle-outline"
+                  onPress={handleSave}
+                />
+                <StyledButton
                   title="Cancel"
-                  color="grey"
+                  icon="close-circle-outline"
+                  variant="secondary"
                   onPress={() => {
                     setIsEditing(false);
                     if (item) populateFromItem(item);
@@ -431,8 +445,17 @@ export default function ItemDetailsScreen() {
               </>
             ) : (
               <>
-                <Button title="Edit" onPress={() => setIsEditing(true)} />
-                <Button title="Delete" color="red" onPress={handleDelete} />
+                <StyledButton
+                  title="Edit"
+                  icon="create-outline"
+                  onPress={() => setIsEditing(true)}
+                />
+                <StyledButton
+                  title="Delete"
+                  icon="trash-outline"
+                  variant="danger"
+                  onPress={handleDelete}
+                />
               </>
             )}
           </View>

@@ -3,7 +3,6 @@ import {
   Alert,
   View,
   Text,
-  Button,
   ScrollView,
   Switch,
   Image,
@@ -24,6 +23,7 @@ import CategoryPicker from '../../components/CategoryPicker';
 import TagInput from '../../components/TagInput';
 import StyledInput from '../../components/StyledInput';
 import MetadataInput from '../../components/MetadataInput';
+import StyledButton from '../../components/StyledButton';
 import { createStyles } from './styles';
 
 type AddItemScreenNavigationProp = NativeStackNavigationProp<
@@ -184,7 +184,14 @@ export default function AddItemScreen() {
             onRemove={() => removeMetadataField(idx)}
           />
         ))}
-        <Button title="+ Add Metadata Field" onPress={addMetadataField} />
+        <View style={{ alignItems: 'center' }}>
+          <StyledButton
+            title="Add Metadata Field"
+            icon="add-circle-outline"
+            buttonStyle="add"
+            onPress={addMetadataField}
+          />
+        </View>
 
         <Text style={styles.sectionTitle}>Images</Text>
         <ScrollView horizontal style={styles.imageContainer}>
@@ -203,7 +210,9 @@ export default function AddItemScreen() {
             </View>
           ))}
         </ScrollView>
-        <ImagePickerButton onImageSelected={(uri) => setImages([...images, uri])} />
+        <View style={{ alignItems: 'center' }}>
+          <ImagePickerButton onImageSelected={(uri) => setImages([...images, uri])} />
+        </View>
 
         <TagInput
           tags={tags}
@@ -223,8 +232,9 @@ export default function AddItemScreen() {
           <Text style={{ marginLeft: 10, color: colors.text }}>Add multiple items</Text>
         </View>
         <View style={styles.buttonRow}>
-          <Button
+          <StyledButton
             title="Save Item"
+            icon="checkmark-circle-outline"
             onPress={async () => {
               const result = await handleAddItem();
 
@@ -246,6 +256,13 @@ export default function AddItemScreen() {
                 bottomOffset: 60, // distance from bottom (adjust)
               });
             }}
+          />
+          <StyledButton
+            title="Cancel"
+            icon="close-circle-outline"
+            variant="secondary"
+            onPress={() => navigation.goBack()}
+            style={{ marginLeft: 10 }}
           />
         </View>
       </ScrollView>

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Button, Alert } from 'react-native';
+import { View, Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import CustomDialog from './CustomDialog';
+import StyledButton from './StyledButton';
 
 type Props = {
     onImageSelected: (uri: string) => void;
@@ -71,8 +72,13 @@ export default function ImagePickerButton({
     };
 
     return (
-        <View>
-            <Button title={title} onPress={handlePress} />
+        <View style={{ alignItems: 'center' }}>
+            <StyledButton
+                title={title}
+                icon="image-outline"
+                buttonStyle="add"
+                onPress={handlePress}
+            />
             <CustomDialog
                 visible={dialogVisible}
                 title="Select Image"

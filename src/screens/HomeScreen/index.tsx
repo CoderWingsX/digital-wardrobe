@@ -3,11 +3,9 @@ import {
   Alert,
   View,
   Text,
-  Button,
   FlatList,
   TouchableOpacity,
   Image,
-  TextInput,
   TouchableWithoutFeedback,
   Keyboard,
 } from 'react-native';
@@ -21,6 +19,8 @@ import { RootStackParamList } from '../../types';
 import Toast from 'react-native-toast-message';
 import { getLocalImageUri } from '../../lib/filesystem';
 import EmptyState from '../../components/EmptyState';
+import StyledButton from '../../components/StyledButton';
+import StyledInput from '../../components/StyledInput';
 import { createStyles } from './styles';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<
@@ -151,28 +151,43 @@ export default function HomeScreen() {
   }
 
   return (
-    <TouchableWithoutFeedback onPress={() => setShowSuggestions(false)}>
+    <TouchableWithoutFeedback
+      onPress={() => {
+        setShowSuggestions(false);
+        Keyboard.dismiss();
+      }}
+    >
       <View style={styles.container}>
         <View style={styles.buttonRow}>
-          <Button
+          <StyledButton
             title="Add Item"
+            icon="add-circle-outline"
             onPress={() => navigation.navigate('AddItem')}
           />
-          <Button title="Clear All" color="red" onPress={handleClearAll} />
+          <StyledButton
+            title="Clear All"
+            icon="trash-outline"
+            variant="danger"
+            onPress={handleClearAll}
+          />
         </View>
 
         {/* Search Section */}
         <View style={styles.searchContainer}>
-          <TextInput
-            style={styles.searchInput}
+          <StyledInput
             placeholder="Search clothes, tags, colors..."
-            placeholderTextColor={colors.textMuted}
             value={searchQuery}
             onChangeText={(text) => {
               setSearchQuery(text);
               setShowSuggestions(true);
             }}
             onFocus={() => setShowSuggestions(true)}
+            onSubmitEditing={() => {
+              setShowSuggestions(false);
+              Keyboard.dismiss();
+            }}
+            returnKeyType="search"
+            containerStyle={{ marginBottom: 0 }}
           />
 
           {showSuggestions && suggestions.length > 0 && (
@@ -222,6 +237,11 @@ export default function HomeScreen() {
             data={displayItems}
             keyExtractor={(item) => item.id.toString()}
             scrollEnabled={!showSuggestions}
+            keyboardShouldPersistTaps="handled"
+            onScrollBeginDrag={() => {
+              setShowSuggestions(false);
+              Keyboard.dismiss();
+            }}
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={styles.item}

@@ -5,15 +5,6 @@ import { ThemeColors } from '../../contexts/ThemeContext';
 
 export const createStyles = (colors: ThemeColors, bottomInset: number = 0) => StyleSheet.create({
   container: { flex: 1, padding: 20, paddingBottom: bottomInset + 20, backgroundColor: colors.background },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.inputBorder,
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 10,
-    backgroundColor: colors.inputBackground,
-    color: colors.text,
-  },
   buttonRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -53,19 +44,9 @@ export const createStyles = (colors: ThemeColors, bottomInset: number = 0) => St
     marginBottom: 10,
     zIndex: 10,
   },
-  searchInput: {
-    height: 45,
-    borderWidth: 1,
-    borderColor: colors.inputBorder,
-    borderRadius: 22.5,
-    paddingHorizontal: 20,
-    backgroundColor: colors.inputBackground,
-    fontSize: 16,
-    color: colors.text,
-  },
   suggestionsContainer: {
     position: 'absolute',
-    top: 50,
+    top: 55,
     left: 0,
     right: 0,
     backgroundColor: colors.card,

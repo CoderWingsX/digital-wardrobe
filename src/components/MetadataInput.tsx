@@ -46,7 +46,7 @@ export default function MetadataInput({
 
             {/* Remove Button */}
             <TouchableOpacity onPress={onRemove} style={styles.removeButton}>
-                <Ionicons name="close" size={20} color={colors.textMuted} />
+                <Ionicons name="trash-outline" size={20} color={colors.textMuted} />
             </TouchableOpacity>
         </View>
     );
