@@ -10,7 +10,7 @@ import {
   Keyboard,
 } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDatabase } from '../../contexts/DatabaseContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
@@ -38,8 +38,7 @@ export default function HomeScreen() {
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const { items, refresh, clearAllOptimistic } = useDatabase();
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const styles = createStyles(colors, insets.bottom);
+  const styles = createStyles(colors);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
 
@@ -151,137 +150,139 @@ export default function HomeScreen() {
   }
 
   return (
-    <TouchableWithoutFeedback
-      onPress={() => {
-        setShowSuggestions(false);
-        Keyboard.dismiss();
-      }}
-    >
-      <View style={styles.container}>
-        <View style={styles.buttonRow}>
-          <StyledButton
-            title="Clear All"
-            icon="trash-outline"
-            variant="danger"
-            onPress={handleClearAll}
-          />
-          <StyledButton
-            title="Add Item"
-            icon="add-circle-outline"
-            onPress={() => navigation.navigate('AddItem')}
-          />
-        </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, paddingBottom: 10 }} edges={['bottom']}>
+      <TouchableWithoutFeedback
+        onPress={() => {
+          setShowSuggestions(false);
+          Keyboard.dismiss();
+        }}
+      >
+        <View style={styles.container}>
+          <View style={styles.buttonRow}>
+            <StyledButton
+              title="Clear All"
+              icon="trash-outline"
+              variant="danger"
+              onPress={handleClearAll}
+            />
+            <StyledButton
+              title="Add Item"
+              icon="add-circle-outline"
+              onPress={() => navigation.navigate('AddItem')}
+            />
+          </View>
 
-        {/* Search Section */}
-        <View style={styles.searchContainer}>
-          <StyledInput
-            placeholder="Search clothes, tags, colors..."
-            value={searchQuery}
-            onChangeText={(text) => {
-              setSearchQuery(text);
-              setShowSuggestions(true);
-            }}
-            onFocus={() => setShowSuggestions(true)}
-            onSubmitEditing={() => {
-              setShowSuggestions(false);
-              Keyboard.dismiss();
-            }}
-            returnKeyType="search"
-            containerStyle={{ marginBottom: 0 }}
-          />
+          {/* Search Section */}
+          <View style={styles.searchContainer}>
+            <StyledInput
+              placeholder="Search clothes, tags, colors..."
+              value={searchQuery}
+              onChangeText={(text) => {
+                setSearchQuery(text);
+                setShowSuggestions(true);
+              }}
+              onFocus={() => setShowSuggestions(true)}
+              onSubmitEditing={() => {
+                setShowSuggestions(false);
+                Keyboard.dismiss();
+              }}
+              returnKeyType="search"
+              containerStyle={{ marginBottom: 0 }}
+            />
 
-          {showSuggestions && suggestions.length > 0 && (
-            <View style={styles.suggestionsContainer}>
-              <ScrollView
-                style={{ flex: 1 }}
-                contentContainerStyle={{ flexGrow: 1 }}
-                nestedScrollEnabled={true}
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={true}
-                bounces={false}
-              >
-                {suggestions.map((item, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={styles.suggestionItem}
-                    onPress={() => handleSuggestionPress(item)}
-                  >
-                    <Text style={styles.suggestionText} numberOfLines={1}>
-                      {item.text}
+            {showSuggestions && suggestions.length > 0 && (
+              <View style={styles.suggestionsContainer}>
+                <ScrollView
+                  style={{ flex: 1 }}
+                  contentContainerStyle={{ flexGrow: 1 }}
+                  nestedScrollEnabled={true}
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={true}
+                  bounces={false}
+                >
+                  {suggestions.map((item, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.suggestionItem}
+                      onPress={() => handleSuggestionPress(item)}
+                    >
+                      <Text style={styles.suggestionText} numberOfLines={1}>
+                        {item.text}
+                      </Text>
+                      <Text style={styles.suggestionType}>{item.type}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+          </View>
+
+          {items.length === 0 ? (
+            <EmptyState
+              icon="👗"
+              title="Your wardrobe is empty"
+              message="Start by adding your first clothing item"
+              actionLabel="Add First Item"
+              onAction={() => navigation.navigate('AddItem')}
+            />
+          ) : displayItems.length === 0 ? (
+            <EmptyState
+              icon="🔍"
+              title="No results found"
+              message={`No items match "${searchQuery}"`}
+            />
+          ) : (
+            <FlatList
+              style={styles.list}
+              data={displayItems}
+              keyExtractor={(item) => item.id.toString()}
+              scrollEnabled={!showSuggestions}
+              keyboardShouldPersistTaps="handled"
+              onScrollBeginDrag={() => {
+                setShowSuggestions(false);
+                Keyboard.dismiss();
+              }}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.item}
+                  onPress={() => {
+                    setShowSuggestions(false);
+                    navigation.navigate('ItemDetails', { itemId: item.id });
+                  }}
+                  accessibilityLabel={`${item.name}, ${item.category}`}
+                  accessibilityRole="button"
+                >
+                  {item.images && item.images.length > 0 ? (
+                    <Image
+                      source={{ uri: getLocalImageUri(item.images[0]) }}
+                      style={styles.itemImage}
+                      accessibilityLabel={`Image of ${item.name}`}
+                    />
+                  ) : (
+                    <View
+                      style={[
+                        styles.itemImage,
+                        { justifyContent: 'center', alignItems: 'center' },
+                      ]}
+                    >
+                      <Text style={{ fontSize: 24 }}>👕</Text>
+                    </View>
+                  )}
+                  <View style={styles.itemContent}>
+                    <Text style={styles.title} numberOfLines={1}>
+                      {item.name}
                     </Text>
-                    <Text style={styles.suggestionType}>{item.type}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
+                    <Text style={styles.category}>{item.category}</Text>
+                    <Text style={styles.description} numberOfLines={2}>
+                      {item.description}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+            />
           )}
         </View>
-
-        {items.length === 0 ? (
-          <EmptyState
-            icon="👗"
-            title="Your wardrobe is empty"
-            message="Start by adding your first clothing item"
-            actionLabel="Add First Item"
-            onAction={() => navigation.navigate('AddItem')}
-          />
-        ) : displayItems.length === 0 ? (
-          <EmptyState
-            icon="🔍"
-            title="No results found"
-            message={`No items match "${searchQuery}"`}
-          />
-        ) : (
-          <FlatList
-            style={styles.list}
-            data={displayItems}
-            keyExtractor={(item) => item.id.toString()}
-            scrollEnabled={!showSuggestions}
-            keyboardShouldPersistTaps="handled"
-            onScrollBeginDrag={() => {
-              setShowSuggestions(false);
-              Keyboard.dismiss();
-            }}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.item}
-                onPress={() => {
-                  setShowSuggestions(false);
-                  navigation.navigate('ItemDetails', { itemId: item.id });
-                }}
-                accessibilityLabel={`${item.name}, ${item.category}`}
-                accessibilityRole="button"
-              >
-                {item.images && item.images.length > 0 ? (
-                  <Image
-                    source={{ uri: getLocalImageUri(item.images[0]) }}
-                    style={styles.itemImage}
-                    accessibilityLabel={`Image of ${item.name}`}
-                  />
-                ) : (
-                  <View
-                    style={[
-                      styles.itemImage,
-                      { justifyContent: 'center', alignItems: 'center' },
-                    ]}
-                  >
-                    <Text style={{ fontSize: 24 }}>👕</Text>
-                  </View>
-                )}
-                <View style={styles.itemContent}>
-                  <Text style={styles.title} numberOfLines={1}>
-                    {item.name}
-                  </Text>
-                  <Text style={styles.category}>{item.category}</Text>
-                  <Text style={styles.description} numberOfLines={2}>
-                    {item.description}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            )}
-          />
-        )}
-      </View>
-    </TouchableWithoutFeedback>
+      </TouchableWithoutFeedback>
+    </SafeAreaView>
   );
 }

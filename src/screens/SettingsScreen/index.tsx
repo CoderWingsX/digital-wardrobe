@@ -206,7 +206,7 @@ export default function SettingsScreen() {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface }} edges={['bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface, paddingBottom: 10 }} edges={['bottom']}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Appearance</Text>

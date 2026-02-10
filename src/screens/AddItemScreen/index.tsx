@@ -10,7 +10,7 @@ import {
   Platform,
   TouchableOpacity,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDatabase } from '../../contexts/DatabaseContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import Toast from 'react-native-toast-message';
@@ -34,8 +34,7 @@ type AddItemScreenNavigationProp = NativeStackNavigationProp<
 export default function AddItemScreen() {
   const { addItemOptimistic } = useDatabase();
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const styles = createStyles(colors, insets.bottom);
+  const styles = createStyles(colors);
   const scrollViewRef = useRef<ScrollView>(null);
 
   const [name, setName] = useState('');
@@ -138,129 +137,131 @@ export default function AddItemScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-    >
-      <ScrollView
-        ref={scrollViewRef}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        scrollEnabled={!isTagInputFocused}
-        contentContainerStyle={styles.contentContainer}
-        nestedScrollEnabled={true}
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, paddingBottom: 10 }} edges={['bottom']}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
-        <StyledInput
-          label="Item Name"
-          required
-          placeholder="Enter item name"
-          value={name}
-          onChangeText={setName}
-        />
-
-        <StyledInput
-          label="Description"
-          placeholder="Enter description"
-          value={description}
-          onChangeText={setDescription}
-          multiline
-        />
-
-        <CategoryPicker
-          value={category}
-          onSelect={setCategory}
-          required
-        />
-
-        <Text style={styles.sectionTitle}>Metadata</Text>
-        {metadata.map((m, idx) => (
-          <MetadataInput
-            key={idx}
-            itemKey={m.key}
-            value={m.value}
-            onChangeKey={(text) => updateMetadata(idx, text, m.value)}
-            onChangeValue={(text) => updateMetadata(idx, m.key, text)}
-            onRemove={() => removeMetadataField(idx)}
-          />
-        ))}
-        <StyledButton
-          title="Add Metadata Field"
-          icon="add-circle-outline"
-          buttonStyle="add"
-          onPress={addMetadataField}
-        />
-
-        <Text style={styles.sectionTitle}>Images</Text>
-        <ScrollView horizontal style={styles.imageContainer}>
-          {images.map((uri, idx) => (
-            <View key={idx} style={styles.imageWrapper}>
-              <Image
-                source={{ uri: getLocalImageUri(uri) }}
-                style={styles.imagePreview}
-              />
-              <TouchableOpacity
-                style={styles.deleteImageButton}
-                onPress={() => removeImage(idx)}
-              >
-                <Text style={styles.deleteImageText}>✕</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
-        </ScrollView>
-        <ImagePickerButton onImageSelected={(uri) => setImages([...images, uri])} />
-
-        <TagInput
-          tags={tags}
-          onChangeTags={setTags}
-          onInteractionStart={() => setIsTagInputFocused(true)}
-          onInteractionEnd={() => setIsTagInputFocused(false)}
-        />
-
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            marginVertical: 10,
-          }}
+        <ScrollView
+          ref={scrollViewRef}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          scrollEnabled={!isTagInputFocused}
+          contentContainerStyle={styles.contentContainer}
+          nestedScrollEnabled={true}
         >
-          <Switch value={multiAdd} onValueChange={setMultiAdd} />
-          <Text style={{ marginLeft: 10, color: colors.text }}>Add multiple items</Text>
-        </View>
-        <View style={styles.buttonRow}>
-          <StyledButton
-            title="Cancel"
-            icon="close-circle-outline"
-            variant="secondary"
-            onPress={() => navigation.goBack()}
+          <StyledInput
+            label="Item Name"
+            required
+            placeholder="Enter item name"
+            value={name}
+            onChangeText={setName}
           />
+
+          <StyledInput
+            label="Description"
+            placeholder="Enter description"
+            value={description}
+            onChangeText={setDescription}
+            multiline
+          />
+
+          <CategoryPicker
+            value={category}
+            onSelect={setCategory}
+            required
+          />
+
+          <Text style={styles.sectionTitle}>Metadata</Text>
+          {metadata.map((m, idx) => (
+            <MetadataInput
+              key={idx}
+              itemKey={m.key}
+              value={m.value}
+              onChangeKey={(text) => updateMetadata(idx, text, m.value)}
+              onChangeValue={(text) => updateMetadata(idx, m.key, text)}
+              onRemove={() => removeMetadataField(idx)}
+            />
+          ))}
           <StyledButton
-            title="Save Item"
-            icon="checkmark-circle-outline"
-            onPress={async () => {
-              const result = await handleAddItem();
+            title="Add Metadata Field"
+            icon="add-circle-outline"
+            buttonStyle="add"
+            onPress={addMetadataField}
+          />
 
-              if (!result) return; // if validation failed
+          <Text style={styles.sectionTitle}>Images</Text>
+          <ScrollView horizontal style={styles.imageContainer}>
+            {images.map((uri, idx) => (
+              <View key={idx} style={styles.imageWrapper}>
+                <Image
+                  source={{ uri: getLocalImageUri(uri) }}
+                  style={styles.imagePreview}
+                />
+                <TouchableOpacity
+                  style={styles.deleteImageButton}
+                  onPress={() => removeImage(idx)}
+                >
+                  <Text style={styles.deleteImageText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </ScrollView>
+          <ImagePickerButton onImageSelected={(uri) => setImages([...images, uri])} />
 
-              if (!multiAdd) {
-                // Single add: show a confirmation and go back.
-                Alert.alert('Success', 'Item added!');
-                navigation.goBack();
-                return;
-              }
+          <TagInput
+            tags={tags}
+            onChangeTags={setTags}
+            onInteractionStart={() => setIsTagInputFocused(true)}
+            onInteractionEnd={() => setIsTagInputFocused(false)}
+          />
 
-              // Multi-add: show a non-blocking toast instead of an alert
-              Toast.show({
-                type: 'success',
-                text1: 'Saved!',
-                position: 'bottom', // put it at the bottom
-                visibilityTime: 1400,
-                bottomOffset: 60, // distance from bottom (adjust)
-              });
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              marginVertical: 10,
             }}
-          />
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          >
+            <Switch value={multiAdd} onValueChange={setMultiAdd} />
+            <Text style={{ marginLeft: 10, color: colors.text }}>Add multiple items</Text>
+          </View>
+          <View style={styles.buttonRow}>
+            <StyledButton
+              title="Cancel"
+              icon="close-circle-outline"
+              variant="secondary"
+              onPress={() => navigation.goBack()}
+            />
+            <StyledButton
+              title="Save Item"
+              icon="checkmark-circle-outline"
+              onPress={async () => {
+                const result = await handleAddItem();
+
+                if (!result) return; // if validation failed
+
+                if (!multiAdd) {
+                  // Single add: show a confirmation and go back.
+                  Alert.alert('Success', 'Item added!');
+                  navigation.goBack();
+                  return;
+                }
+
+                // Multi-add: show a non-blocking toast instead of an alert
+                Toast.show({
+                  type: 'success',
+                  text1: 'Saved!',
+                  position: 'bottom', // put it at the bottom
+                  visibilityTime: 1400,
+                  bottomOffset: 60, // distance from bottom (adjust)
+                });
+              }}
+            />
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }

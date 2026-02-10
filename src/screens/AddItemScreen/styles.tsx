@@ -1,9 +1,9 @@
 import { StyleSheet } from 'react-native';
 import { ThemeColors } from '../../contexts/ThemeContext';
 
-export const createStyles = (colors: ThemeColors, bottomInset: number = 0) => StyleSheet.create({
+export const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  contentContainer: { padding: 20, paddingBottom: bottomInset + 20 },
+  contentContainer: { padding: 20 },
   label: {
     fontSize: 14,
     fontWeight: '500',
