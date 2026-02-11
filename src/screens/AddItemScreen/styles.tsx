@@ -3,7 +3,7 @@ import { ThemeColors } from '../../contexts/ThemeContext';
 
 export const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  contentContainer: { padding: 20 },
+  contentContainer: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 20 },
   label: {
     fontSize: 14,
     fontWeight: '500',

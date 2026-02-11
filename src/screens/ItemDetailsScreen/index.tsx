@@ -1,6 +1,6 @@
 // src/screens/ItemDetailsScreen/index.tsx
 
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -17,11 +17,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useDatabase } from '../../contexts/DatabaseContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { loadItem } from '../../database/queries';
-import { RootStackParamList, WardrobeItem } from '../../types';
+import { TabParamList, WardrobeItem } from '../../types';
 import ImagePickerButton from '../../components/ImagePickerButton';
 import { saveImageLocally, deleteImageLocally, getLocalImageUri } from '../../lib/filesystem';
 import ImageViewer from 'react-native-image-zoom-viewer';
@@ -33,9 +34,9 @@ import StyledButton from '../../components/StyledButton';
 import { createStyles } from './styles';
 import { useUnsavedChangesWarning } from '../../hooks/useUnsavedChangesWarning';
 
-type ItemDetailsRouteProp = RouteProp<RootStackParamList, 'ItemDetails'>;
-type ItemDetailsNavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
+type ItemDetailsRouteProp = RouteProp<TabParamList, 'ItemDetails'>;
+type ItemDetailsNavigationProp = BottomTabNavigationProp<
+  TabParamList,
   'ItemDetails'
 >;
 
@@ -77,22 +78,22 @@ export default function ItemDetailsScreen() {
   // Detect if form has unsaved changes (only when editing)
   const hasUnsavedChanges = useMemo(() => {
     if (!isEditing || !item) return false;
-    
+
     // Compare current form state with original item
     if (name !== item.name) return true;
     if (description !== item.description) return true;
     if (category !== item.category) return true;
-    
+
     // Compare tags
     const originalTags = [...(item.tags || [])].sort().join(',');
     const currentTags = [...tags].sort().join(',');
     if (originalTags !== currentTags) return true;
-    
+
     // Compare images
     const originalImages = [...(item.images || [])].sort().join(',');
     const currentImages = [...images].sort().join(',');
     if (originalImages !== currentImages) return true;
-    
+
     // Compare metadata
     const originalMeta = JSON.stringify(
       Object.entries(item.metadata || {}).sort(([a], [b]) => a.localeCompare(b))
@@ -101,12 +102,22 @@ export default function ItemDetailsScreen() {
       metadata.filter(m => m.key).map(m => [m.key, m.value]).sort(([a], [b]) => a.localeCompare(b))
     );
     if (originalMeta !== currentMeta) return true;
-    
+
     return false;
   }, [isEditing, item, name, description, category, tags, images, metadata]);
 
   // Show warning when navigating away with unsaved changes
   useUnsavedChangesWarning(hasUnsavedChanges);
+
+  // Control tab bar visibility based on edit mode
+  useLayoutEffect(() => {
+    const parent = navigation.getParent();
+    if (parent) {
+      parent.setOptions({
+        tabBarStyle: isEditing ? { display: 'none' } : undefined,
+      });
+    }
+  }, [isEditing, navigation]);
 
   function populateFromItem(selected: WardrobeItem) {
     setItem(selected);
@@ -278,7 +289,7 @@ export default function ItemDetailsScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, paddingBottom: 10 }} edges={['bottom']}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
@@ -533,6 +544,6 @@ export default function ItemDetailsScreen() {
           </Modal>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }

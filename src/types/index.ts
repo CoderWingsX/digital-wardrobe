@@ -14,13 +14,28 @@ export interface WardrobeItem {
   images: string[];
 }
 
-// Needs to be modified if a new screen is added
-export type RootStackParamList = {
+// Tab navigation types
+export type TabParamList = {
   Home: undefined;
-  ItemDetails: { itemId: number };
-  AddItem: undefined;
+  Wardrobe: undefined;
+  Add: undefined;
   Settings: undefined;
+  ItemDetails: { itemId: number };
 };
+
+
+
+// Stack navigation types (for screens that need to be pushed on top of tabs)
+export type RootStackParamList = {
+  Tabs: undefined;
+};
+
+// Filter state for search screen
+export interface FilterState {
+  selectedTags: string[];
+  selectedCategories: string[];
+  sortBy: 'newest' | 'oldest' | 'alphabetical';
+}
 
 // Type for adding a new item.
 export type NewItemData = {

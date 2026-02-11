@@ -15,8 +15,8 @@ import { useDatabase } from '../../contexts/DatabaseContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import Toast from 'react-native-toast-message';
 import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../types';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { TabParamList } from '../../types';
 import ImagePickerButton from '../../components/ImagePickerButton';
 import { saveImageLocally, getLocalImageUri } from '../../lib/filesystem';
 import CategoryPicker from '../../components/CategoryPicker';
@@ -27,9 +27,9 @@ import StyledButton from '../../components/StyledButton';
 import { createStyles } from './styles';
 import { useUnsavedChangesWarning } from '../../hooks/useUnsavedChangesWarning';
 
-type AddItemScreenNavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
-  'AddItem'
+type AddItemScreenNavigationProp = BottomTabNavigationProp<
+  TabParamList,
+  'Add'
 >;
 
 export default function AddItemScreen() {
@@ -153,7 +153,7 @@ export default function AddItemScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, paddingBottom: 10 }} edges={['bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={[]}>
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

@@ -132,14 +132,18 @@ export default function ImagePickerButton({
                         label: 'Camera',
                         onPress: () => {
                             setDialogVisible(false);
-                            pickImage(ImagePicker.launchCameraAsync);
+                            setTimeout(() => {
+                                pickImage(ImagePicker.launchCameraAsync);
+                            }, 500);
                         },
                     },
                     {
                         label: 'Gallery',
                         onPress: () => {
                             setDialogVisible(false);
-                            pickImage(ImagePicker.launchImageLibraryAsync);
+                            setTimeout(() => {
+                                pickImage(ImagePicker.launchImageLibraryAsync);
+                            }, 500);
                         },
                     },
                     {

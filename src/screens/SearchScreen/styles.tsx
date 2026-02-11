@@ -1,0 +1,83 @@
+// src/screens/SearchScreen/styles.tsx
+
+import { StyleSheet } from 'react-native';
+import { ThemeColors } from '../../contexts/ThemeContext';
+
+export const createStyles = (colors: ThemeColors) => StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    list: { flex: 1, marginTop: 10 },
+    listContent: { paddingHorizontal: 20 },
+    item: {
+        flexDirection: 'row',
+        borderWidth: 1,
+        borderColor: colors.border,
+        borderRadius: 12,
+        padding: 12,
+        marginBottom: 12,
+        backgroundColor: colors.card,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    itemImage: {
+        width: 80,
+        height: 80,
+        borderRadius: 8,
+        marginRight: 12,
+        backgroundColor: colors.surface,
+    },
+    itemContent: {
+        flex: 1,
+        justifyContent: 'center',
+    },
+    title: { fontWeight: 'bold', fontSize: 18, color: colors.text },
+    category: { fontSize: 14, color: colors.textSecondary, marginBottom: 4 },
+    description: { fontSize: 13, color: colors.textMuted },
+    searchContainer: {
+        marginBottom: 10,
+        zIndex: 10,
+        paddingHorizontal: 20,
+        paddingTop: 16,
+    },
+    suggestionsContainer: {
+        position: 'absolute',
+        top: 55,
+        left: 0,
+        right: 0,
+        backgroundColor: colors.card,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: colors.border,
+        maxHeight: 200,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 5,
+        elevation: 8,
+        zIndex: 100,
+        overflow: 'hidden',
+    },
+    suggestionItem: {
+        padding: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    suggestionText: {
+        fontSize: 15,
+        color: colors.text,
+        flex: 1,
+    },
+    suggestionType: {
+        fontSize: 12,
+        color: colors.textMuted,
+        backgroundColor: colors.surface,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+        marginLeft: 8,
+    },
+});

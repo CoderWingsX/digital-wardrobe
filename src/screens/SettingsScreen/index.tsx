@@ -31,7 +31,7 @@ import {
 import { createStyles } from './styles';
 
 export default function SettingsScreen() {
-  const { schemaVersion, items, categories, allTags, refresh } = useDatabase();
+  const { schemaVersion, items, categories, allTags, refresh, clearAllOptimistic } = useDatabase();
   const { mode, setMode, colors } = useTheme();
   const styles = createStyles(colors);
   const [loading, setLoading] = useState<string | null>(null);
@@ -206,7 +206,7 @@ export default function SettingsScreen() {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface, paddingBottom: 10 }} edges={['bottom']}>
+    <>
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Appearance</Text>
@@ -271,6 +271,35 @@ export default function SettingsScreen() {
           {renderButton('cleanupImages', 'Cleanup Orphaned Images', handleCleanupImages)}
           {renderButton('cleanupRecords', 'Cleanup Orphaned Records', handleCleanupRecords)}
           {renderButton('vacuum', 'Vacuum Database', handleVacuum, true)}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Data Management</Text>
+          <Text style={styles.sectionHint}>Manage your wardrobe data</Text>
+          {renderButton('clearAll', 'Clear All Items', async () => {
+            if (items.length === 0) {
+              Alert.alert('No Items', 'Your wardrobe is already empty.');
+              return;
+            }
+            Alert.alert(
+              'Clear All Items',
+              `This will delete all ${items.length} items from your wardrobe. This cannot be undone. Continue?`,
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Delete All',
+                  style: 'destructive',
+                  onPress: async () => {
+                    await runWithLoading('clearAll', async () => {
+                      await clearAllOptimistic();
+                      await refresh();
+                      Alert.alert('Success', 'All items have been cleared.');
+                    });
+                  },
+                },
+              ]
+            );
+          }, true)}
         </View>
 
         <View style={styles.section}>
@@ -346,6 +375,6 @@ export default function SettingsScreen() {
           }, true)}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </>
   );
 }

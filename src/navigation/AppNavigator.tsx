@@ -1,13 +1,9 @@
 // src/navigation/AppNavigator.tsx
 
 import React from 'react';
-import { TouchableOpacity, Text } from 'react-native';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
-import { createStackNavigator, CardStyleInterpolators, TransitionPresets } from '@react-navigation/stack';
-import HomeScreen from '../screens/HomeScreen';
-import ItemDetailsScreen from '../screens/ItemDetailsScreen';
-import AddItemScreen from '../screens/AddItemScreen';
-import SettingsScreen from '../screens/SettingsScreen';
+import { createStackNavigator, TransitionPresets } from '@react-navigation/stack';
+import TabNavigator from './TabNavigator';
 import { RootStackParamList } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -53,40 +49,12 @@ export default function AppNavigator() {
           headerStyle: { backgroundColor: colors.headerBackground },
           headerTintColor: colors.text,
           headerTitleStyle: { color: colors.text },
-          
         }}
       >
         <Stack.Screen
-          name="Home"
-          component={HomeScreen}
-          options={({ navigation }) => ({
-            title: 'Wardrobe',
-            headerRight: () => (
-              <TouchableOpacity
-                onPress={() => navigation.navigate('Settings')}
-                style={{ padding: 8 }}
-                accessibilityLabel="Settings"
-                accessibilityRole="button"
-              >
-                <Text style={{ fontSize: 22 }}>⚙️</Text>
-              </TouchableOpacity>
-            ),
-          })}
-        />
-        <Stack.Screen
-          name="ItemDetails"
-          component={ItemDetailsScreen}
-          options={{ title: 'Item Details' }}
-        />
-        <Stack.Screen
-          name="AddItem"
-          component={AddItemScreen}
-          options={{ title: 'Add Item' }}
-        />
-        <Stack.Screen
-          name="Settings"
-          component={SettingsScreen}
-          options={{ title: 'Settings' }}
+          name="Tabs"
+          component={TabNavigator}
+          options={{ headerShown: false }}
         />
       </Stack.Navigator>
     </NavigationContainer>
