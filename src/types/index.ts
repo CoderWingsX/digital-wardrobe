@@ -18,16 +18,18 @@ export interface WardrobeItem {
 export type TabParamList = {
   Home: undefined;
   Wardrobe: undefined;
-  Add: undefined;
+  Add: undefined; // We'll keep this but it will trigger a modal
   Settings: undefined;
-  ItemDetails: { itemId: number };
 };
-
-
 
 // Stack navigation types (for screens that need to be pushed on top of tabs)
 export type RootStackParamList = {
-  Tabs: undefined;
+  Tabs: { screen?: keyof TabParamList };
+  Home: undefined;
+  WardrobeView: undefined;
+  Settings: undefined;
+  AddItem: { item?: WardrobeItem };
+  ItemDetails: { itemId: number };
 };
 
 // Filter state for search screen

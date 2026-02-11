@@ -7,6 +7,12 @@ import TabNavigator from './TabNavigator';
 import { RootStackParamList } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
 
+import HomeScreen from '../screens/HomeScreen/index';
+import WardrobeScreen from '../screens/WardrobeScreen/index';
+import SettingsScreen from '../screens/SettingsScreen/index';
+import ItemDetailsScreen from '../screens/ItemDetailsScreen/index';
+import AddItemScreen from '../screens/AddItemScreen/index';
+
 const Stack = createStackNavigator<RootStackParamList>();
 
 export default function AppNavigator() {
@@ -49,12 +55,40 @@ export default function AppNavigator() {
           headerStyle: { backgroundColor: colors.headerBackground },
           headerTintColor: colors.text,
           headerTitleStyle: { color: colors.text },
+          headerBackTitle: 'Back',
         }}
       >
         <Stack.Screen
           name="Tabs"
           component={TabNavigator}
           options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Home"
+          component={HomeScreen}
+          options={{ title: 'Home' }}
+        />
+        <Stack.Screen
+          name="WardrobeView"
+          component={WardrobeScreen}
+          options={{ title: 'Wardrobe' }}
+        />
+        <Stack.Screen
+          name="Settings"
+          component={SettingsScreen}
+          options={{ title: 'Settings' }}
+        />
+        <Stack.Screen
+          name="AddItem"
+          component={AddItemScreen}
+          options={({ route }) => ({
+            title: route.params?.item ? 'Edit Item' : 'Add Item',
+          })}
+        />
+        <Stack.Screen
+          name="ItemDetails"
+          component={ItemDetailsScreen}
+          options={{ title: 'Item Details' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

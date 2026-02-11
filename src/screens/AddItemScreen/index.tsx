@@ -14,9 +14,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDatabase } from '../../contexts/DatabaseContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import Toast from 'react-native-toast-message';
-import { useNavigation } from '@react-navigation/native';
-import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { TabParamList } from '../../types';
+import { RootStackParamList, WardrobeItem } from '../../types';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { Ionicons } from '@expo/vector-icons';
 import ImagePickerButton from '../../components/ImagePickerButton';
 import { saveImageLocally, getLocalImageUri } from '../../lib/filesystem';
 import CategoryPicker from '../../components/CategoryPicker';
@@ -27,46 +28,83 @@ import StyledButton from '../../components/StyledButton';
 import { createStyles } from './styles';
 import { useUnsavedChangesWarning } from '../../hooks/useUnsavedChangesWarning';
 
-type AddItemScreenNavigationProp = BottomTabNavigationProp<
-  TabParamList,
-  'Add'
+type AddItemScreenNavigationProp = StackNavigationProp<
+  RootStackParamList,
+  'AddItem'
 >;
 
+type AddItemScreenRouteProp = RouteProp<RootStackParamList, 'AddItem'>;
+
 export default function AddItemScreen() {
-  const { addItemOptimistic } = useDatabase();
+  const navigation = useNavigation<AddItemScreenNavigationProp>();
+  const route = useRoute<AddItemScreenRouteProp>();
+  const { addItemOptimistic, updateItemOptimistic } = useDatabase();
   const { colors } = useTheme();
   const styles = createStyles(colors);
   const scrollViewRef = useRef<ScrollView>(null);
 
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('');
-  const [metadata, setMetadata] = useState<{ key: string; value: string }[]>(
-    [
+  const editItem = route.params?.item;
+  const isEditing = !!editItem;
+
+  const [name, setName] = useState(editItem?.name || '');
+  const [description, setDescription] = useState(editItem?.description || '');
+  const [category, setCategory] = useState(editItem?.category || '');
+
+  // Transform metadata object to array for editing, or use defaults
+  const initialMetadata = useMemo(() => {
+    if (editItem?.metadata) {
+      const entries = Object.entries(editItem.metadata).map(([key, value]) => ({
+        key,
+        value: String(value)
+      }));
+      // Pad with defaults if few entries
+      if (entries.length < 4) {
+        const defaults = ['Color', 'Size', 'Brand', 'Material'];
+        const existingKeys = new Set(entries.map(e => e.key));
+        defaults.forEach(d => {
+          if (!existingKeys.has(d)) entries.push({ key: d, value: '' });
+        });
+      }
+      return entries;
+    }
+    return [
       { key: 'Color', value: '' },
       { key: 'Size', value: '' },
       { key: 'Brand', value: '' },
       { key: 'Material', value: '' },
-    ]
-  );
-  const [tags, setTags] = useState<string[]>([]);
-  const [images, setImages] = useState<string[]>([]);
+    ];
+  }, [editItem]);
+
+  const [metadata, setMetadata] = useState<{ key: string; value: string }[]>(initialMetadata);
+  const [tags, setTags] = useState<string[]>(editItem?.tags || []);
+  const [images, setImages] = useState<string[]>(editItem?.images || []);
   const [multiAdd, setMultiAdd] = useState(false);
   const [isTagInputFocused, setIsTagInputFocused] = useState(false);
 
-  const navigation = useNavigation<AddItemScreenNavigationProp>();
-
   // Detect if form has unsaved changes
   const hasUnsavedChanges = useMemo(() => {
+    if (isEditing) {
+      if (name !== editItem.name) return true;
+      if (description !== editItem.description) return true;
+      if (category !== editItem.category) return true;
+      if (JSON.stringify(tags) !== JSON.stringify(editItem.tags)) return true;
+      if (JSON.stringify(images) !== JSON.stringify(editItem.images)) return true;
+      // Metadata check
+      const currentMetaObj = Object.fromEntries(
+        metadata.filter(m => m.key && m.value.trim() !== '').map(m => [m.key, m.value])
+      );
+      if (JSON.stringify(currentMetaObj) !== JSON.stringify(editItem.metadata)) return true;
+      return false;
+    }
+
     if (name.trim() !== '') return true;
     if (description.trim() !== '') return true;
     if (category !== '') return true;
     if (images.length > 0) return true;
     if (tags.length > 0) return true;
-    // Check if any metadata has non-empty values
     if (metadata.some(m => m.value.trim() !== '')) return true;
     return false;
-  }, [name, description, category, images, tags, metadata]);
+  }, [name, description, category, images, tags, metadata, isEditing, editItem]);
 
   // Show warning when navigating away with unsaved changes
   useUnsavedChangesWarning(hasUnsavedChanges);
@@ -100,15 +138,20 @@ export default function AddItemScreen() {
     try {
       const metaObj = Object.fromEntries(
         metadata
-          .filter((m) => m.key && m.value.trim() !== '') // Filter out empty values
+          .filter((m) => m.key && m.value.trim() !== '')
           .map((m) => [m.key, m.value])
       );
       const tagArr = tags;
 
-      // Save images permanently
+      // Save images permanently (only new ones)
       const savedImageUris: string[] = [];
       try {
         for (const uri of images) {
+          // If it's already a local path from the DB, keep it
+          if (!uri.startsWith('file://')) {
+            savedImageUris.push(uri);
+            continue;
+          }
           const newPath = await saveImageLocally(uri);
           savedImageUris.push(newPath);
         }
@@ -119,32 +162,43 @@ export default function AddItemScreen() {
       }
 
       try {
-        await addItemOptimistic({
-          name,
-          description,
-          category,
-          metadata: metaObj,
-          tags: tagArr,
-          images: savedImageUris,
-        });
+        if (isEditing && editItem) {
+          await updateItemOptimistic(editItem.id, {
+            name,
+            description,
+            category,
+            metadata: metaObj,
+            tags: tagArr,
+            images: savedImageUris,
+          });
+        } else {
+          await addItemOptimistic({
+            name,
+            description,
+            category,
+            metadata: metaObj,
+            tags: tagArr,
+            images: savedImageUris,
+          });
 
-        // Do not block the user with an alert when multi-add is enabled.
-        // The caller will decide whether to show a toast-like message or navigate back.
-
-        setName('');
-        setDescription('');
-        setCategory('');
-        setMetadata([
-          { key: 'Color', value: '' },
-          { key: 'Size', value: '' },
-          { key: 'Brand', value: '' },
-          { key: 'Material', value: '' },
-        ]);
-        setTags([]);
-        setImages([]);
+          if (!multiAdd) {
+            setName('');
+            setDescription('');
+            setCategory('');
+            setMetadata([
+              { key: 'Color', value: '' },
+              { key: 'Size', value: '' },
+              { key: 'Brand', value: '' },
+              { key: 'Material', value: '' },
+            ]);
+            setTags([]);
+            setImages([]);
+          }
+        }
       } catch (err) {
         console.error(err);
-        Alert.alert('Error', 'Failed to add item');
+        Alert.alert('Error', `Failed to ${isEditing ? 'update' : 'add'} item`);
+        return false;
       }
       return true;
     } catch {
@@ -153,18 +207,18 @@ export default function AddItemScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={[]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['bottom']}>
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
         <ScrollView
           ref={scrollViewRef}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           scrollEnabled={!isTagInputFocused}
-          contentContainerStyle={styles.contentContainer}
+          contentContainerStyle={[styles.contentContainer, { paddingBottom: 40 }]}
           nestedScrollEnabled={true}
         >
           <StyledInput
@@ -233,16 +287,19 @@ export default function AddItemScreen() {
             onInteractionEnd={() => setIsTagInputFocused(false)}
           />
 
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              marginVertical: 10,
-            }}
-          >
-            <Switch value={multiAdd} onValueChange={setMultiAdd} />
-            <Text style={{ marginLeft: 10, color: colors.text }}>Add multiple items</Text>
-          </View>
+          {!isEditing && (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                marginVertical: 10,
+              }}
+            >
+              <Switch value={multiAdd} onValueChange={setMultiAdd} />
+              <Text style={{ marginLeft: 10, color: colors.text }}>Add multiple items</Text>
+            </View>
+          )}
+
           <View style={styles.buttonRow}>
             <StyledButton
               title="Cancel"
@@ -251,27 +308,31 @@ export default function AddItemScreen() {
               onPress={() => navigation.goBack()}
             />
             <StyledButton
-              title="Save Item"
-              icon="checkmark-circle-outline"
+              title={isEditing ? "Update Item" : "Save Item"}
+              icon={isEditing ? "save-outline" : "checkmark-circle-outline"}
               onPress={async () => {
                 const result = await handleAddItem();
 
-                if (!result) return; // if validation failed
+                if (!result) return;
+
+                if (isEditing) {
+                  Alert.alert('Success', 'Item updated!');
+                  navigation.goBack();
+                  return;
+                }
 
                 if (!multiAdd) {
-                  // Single add: show a confirmation and go back.
                   Alert.alert('Success', 'Item added!');
                   navigation.goBack();
                   return;
                 }
 
-                // Multi-add: show a non-blocking toast instead of an alert
                 Toast.show({
                   type: 'success',
                   text1: 'Saved!',
-                  position: 'bottom', // put it at the bottom
+                  position: 'bottom',
                   visibilityTime: 1400,
-                  bottomOffset: 60, // distance from bottom (adjust)
+                  bottomOffset: 60,
                 });
               }}
             />

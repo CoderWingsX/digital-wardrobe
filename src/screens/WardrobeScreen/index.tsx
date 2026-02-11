@@ -13,9 +13,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDatabase } from '../../contexts/DatabaseContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { TabParamList, FilterState } from '../../types';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList, TabParamList, FilterState } from '../../types';
 import { getLocalImageUri } from '../../lib/filesystem';
 import EmptyState from '../../components/EmptyState';
 import StyledInput from '../../components/StyledInput';
@@ -23,10 +22,7 @@ import FilterModal from '../../components/FilterModal';
 import { createStyles } from './styles';
 import { Ionicons } from '@expo/vector-icons';
 
-type WardrobeScreenNavigationProp = BottomTabNavigationProp<
-    TabParamList,
-    'Wardrobe'
->;
+type WardrobeScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
 interface Suggestion {
     text: string;
@@ -34,7 +30,7 @@ interface Suggestion {
     itemId?: number;
 }
 
-export default function SearchScreen() {
+export default function WardrobeScreen() {
     const navigation = useNavigation<WardrobeScreenNavigationProp>();
     const { items, categories, allTags } = useDatabase();
     const { colors } = useTheme();

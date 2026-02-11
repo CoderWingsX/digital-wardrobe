@@ -6,18 +6,21 @@ import { Ionicons } from '@expo/vector-icons';
 import { TabParamList } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
 import HomeScreen from '../screens/HomeScreen/index';
-import SearchScreen from '../screens/SearchScreen/index';
+import WardrobeScreen from '../screens/WardrobeScreen/index';
 import ItemDetailsScreen from '../screens/ItemDetailsScreen/index';
 import AddItemScreen from '../screens/AddItemScreen/index';
 import SettingsScreen from '../screens/SettingsScreen/index';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 
+const PlaceholderComponent = () => null;
+
 export default function TabNavigator() {
     const { colors } = useTheme();
 
     return (
         <Tab.Navigator
+            backBehavior="history"
             screenOptions={{
                 tabBarActiveTintColor: colors.primary,
                 tabBarInactiveTintColor: colors.textSecondary,
@@ -54,7 +57,7 @@ export default function TabNavigator() {
             />
             <Tab.Screen
                 name="Wardrobe"
-                component={SearchScreen}
+                component={WardrobeScreen}
                 options={{
                     title: 'Wardrobe',
                     tabBarIcon: ({ color, size }) => (
@@ -64,7 +67,14 @@ export default function TabNavigator() {
             />
             <Tab.Screen
                 name="Add"
-                component={AddItemScreen}
+                component={PlaceholderComponent}
+                listeners={({ navigation }) => ({
+                    tabPress: (e) => {
+                        e.preventDefault();
+                        // @ts-ignore - navigation is shared between stack and tabs
+                        navigation.navigate('AddItem', { item: undefined });
+                    },
+                })}
                 options={{
                     title: 'Add Item',
                     tabBarIcon: ({ color, size }) => (
@@ -80,14 +90,6 @@ export default function TabNavigator() {
                     tabBarIcon: ({ color, size }) => (
                         <Ionicons name="settings-outline" size={size} color={color} />
                     ),
-                }}
-            />
-            <Tab.Screen
-                name="ItemDetails"
-                component={ItemDetailsScreen}
-                options={{
-                    tabBarButton: () => null,
-                    tabBarItemStyle: { display: 'none' },
                 }}
             />
         </Tab.Navigator>

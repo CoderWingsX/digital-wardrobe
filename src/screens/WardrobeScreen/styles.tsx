@@ -1,4 +1,4 @@
-// src/screens/SearchScreen/styles.tsx
+// src/screens/WardrobeScreen/styles.tsx
 
 import { StyleSheet } from 'react-native';
 import { ThemeColors } from '../../contexts/ThemeContext';
