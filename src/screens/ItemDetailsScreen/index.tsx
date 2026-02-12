@@ -106,7 +106,7 @@ export default function ItemDetailsScreen() {
   }, [isEditing, item, name, description, category, tags, images, metadata]);
 
   // Show warning when navigating away with unsaved changes
-  useUnsavedChangesWarning(hasUnsavedChanges);
+  const { showWarningIfNeeded } = useUnsavedChangesWarning(hasUnsavedChanges);
 
   function populateFromItem(selected: WardrobeItem) {
     setItem(selected);
@@ -471,10 +471,10 @@ export default function ItemDetailsScreen() {
                   title="Cancel"
                   icon="close-circle-outline"
                   variant="secondary"
-                  onPress={() => {
+                  onPress={() => showWarningIfNeeded(() => {
                     setIsEditing(false);
                     if (item) populateFromItem(item);
-                  }}
+                  })}
                 />
                 <StyledButton
                   title="Save"

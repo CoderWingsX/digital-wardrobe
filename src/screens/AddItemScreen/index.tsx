@@ -69,7 +69,7 @@ export default function AddItemScreen() {
   }, [name, description, category, images, tags, metadata]);
 
   // Show warning when navigating away with unsaved changes
-  useUnsavedChangesWarning(hasUnsavedChanges);
+  const { showWarningIfNeeded } = useUnsavedChangesWarning(hasUnsavedChanges);
 
   const addMetadataField = () => {
     setMetadata([...metadata, { key: '', value: '' }]);
@@ -248,7 +248,7 @@ export default function AddItemScreen() {
               title="Cancel"
               icon="close-circle-outline"
               variant="secondary"
-              onPress={() => navigation.goBack()}
+              onPress={() => showWarningIfNeeded(() => navigation.goBack())}
             />
             <StyledButton
               title="Save Item"
