@@ -24,7 +24,7 @@ export default function StyledInput({
         <View style={[styles.container, containerStyle]}>
             {label && (
                 <Text style={[styles.label, { color: colors.text }]}>
-                    {label} {required && <Text style={{ color: 'red' }}>*</Text>}
+                    {label} {required && <Text style={{ color: colors.danger }}>*</Text>}
                 </Text>
             )}
             <View style={[

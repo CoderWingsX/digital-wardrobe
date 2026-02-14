@@ -39,7 +39,7 @@ export default function AddItemScreen() {
   const navigation = useNavigation<AddItemScreenNavigationProp>();
   const route = useRoute<AddItemScreenRouteProp>();
   const { addItemOptimistic, updateItemOptimistic } = useDatabase();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const styles = createStyles(colors);
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -220,6 +220,7 @@ export default function AddItemScreen() {
           scrollEnabled={!isTagInputFocused}
           contentContainerStyle={[styles.contentContainer, { paddingBottom: 40 }]}
           nestedScrollEnabled={true}
+          indicatorStyle={isDark ? 'white' : 'black'}
         >
           <StyledInput
             label="Item Name"
@@ -295,7 +296,16 @@ export default function AddItemScreen() {
                 marginVertical: 10,
               }}
             >
-              <Switch value={multiAdd} onValueChange={setMultiAdd} />
+              <Switch
+                value={multiAdd}
+                onValueChange={setMultiAdd}
+                trackColor={{
+                  false: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                  true: colors.primary + '80'
+                }}
+                thumbColor={multiAdd ? colors.primary : (isDark ? colors.textMuted : '#f4f3f4')}
+                ios_backgroundColor={isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}
+              />
               <Text style={{ marginLeft: 10, color: colors.text }}>Add multiple items</Text>
             </View>
           )}

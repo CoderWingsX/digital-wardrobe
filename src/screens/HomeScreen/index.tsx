@@ -22,7 +22,7 @@ type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 export default function HomeScreen() {
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const { items, categories } = useDatabase();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const styles = createStyles(colors);
 
   const [shuffledPair, setShuffledPair] = useState<{ top?: WardrobeItem, bottom?: WardrobeItem }>({});
@@ -127,7 +127,10 @@ export default function HomeScreen() {
   }, []);
 
   return (
-    <ScrollView contentContainerStyle={styles.scrollContent}>
+    <ScrollView
+      contentContainerStyle={styles.scrollContent}
+      indicatorStyle={isDark ? 'white' : 'black'}
+    >
       {/* Recently Added Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Recently Added</Text>

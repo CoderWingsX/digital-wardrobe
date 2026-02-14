@@ -33,7 +33,7 @@ interface Suggestion {
 export default function WardrobeScreen() {
     const navigation = useNavigation<WardrobeScreenNavigationProp>();
     const { items, categories, allTags } = useDatabase();
-    const { colors } = useTheme();
+    const { colors, isDark } = useTheme();
     const styles = createStyles(colors);
     const [searchQuery, setSearchQuery] = useState('');
     const [showSuggestions, setShowSuggestions] = useState(false);
@@ -253,6 +253,7 @@ export default function WardrobeScreen() {
                                 keyExtractor={(item) => item.id.toString()}
                                 scrollEnabled={!showSuggestions}
                                 keyboardShouldPersistTaps="handled"
+                                indicatorStyle={isDark ? 'white' : 'black'}
                                 onScrollBeginDrag={() => {
                                     setShowSuggestions(false);
                                     Keyboard.dismiss();

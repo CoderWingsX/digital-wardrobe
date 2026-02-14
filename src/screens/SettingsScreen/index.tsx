@@ -13,7 +13,20 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import CustomDialog from '../../components/CustomDialog';
 import { useDatabase } from '../../contexts/DatabaseContext';
-import { useTheme, ThemeMode } from '../../contexts/ThemeContext';
+import {
+  useTheme,
+  ThemeMode,
+  lightColors,
+  darkColors,
+  sakuraColors,
+  forestColors,
+  champagneColors,
+  nordColors,
+  sunsetColors,
+  oceanColors,
+  crimsonColors,
+  slateColors
+} from '../../contexts/ThemeContext';
 import {
   cleanupOrphanedImages,
   cleanupOrphanedRecords,
@@ -32,7 +45,7 @@ import { createStyles } from './styles';
 
 export default function SettingsScreen() {
   const { schemaVersion, items, categories, allTags, refresh, clearAllOptimistic } = useDatabase();
-  const { mode, setMode, colors } = useTheme();
+  const { mode, setMode, colors, isDark } = useTheme();
   const styles = createStyles(colors);
   const [loading, setLoading] = useState<string | null>(null);
   const [stats, setStats] = useState<{
@@ -192,29 +205,92 @@ export default function SettingsScreen() {
     </TouchableOpacity>
   );
 
-  const renderThemeOption = (value: ThemeMode, label: string) => (
-    <TouchableOpacity
-      style={[styles.themeOption, mode === value && styles.themeOptionActive]}
-      onPress={() => setMode(value)}
-      accessibilityLabel={`${label} theme`}
-      accessibilityRole="button"
-    >
-      <Text style={[styles.themeOptionText, mode === value && styles.themeOptionTextActive]}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
+  const themeColorMap: Record<string, any> = {
+    light: lightColors,
+    dark: darkColors,
+    sakura: sakuraColors,
+    forest: forestColors,
+    champagne: champagneColors,
+    nord: nordColors,
+    sunset: sunsetColors,
+    ocean: oceanColors,
+    crimson: crimsonColors,
+    slate: slateColors,
+  };
+
+  const renderThemeOption = (value: ThemeMode, label: string) => {
+    const themeColors = themeColorMap[value];
+    const isActive = mode === value;
+
+    // Style for the theme preview button
+    const containerStyle = value === 'system'
+      ? { backgroundColor: colors.surface } // Generic for system
+      : { backgroundColor: themeColors.background };
+
+    const textStyle = value === 'system'
+      ? { color: colors.text }
+      : { color: themeColors.text };
+
+    const borderColor = value === 'system'
+      ? colors.primary
+      : themeColors.primary;
+
+    return (
+      <TouchableOpacity
+        style={[
+          styles.themeOption,
+          { backgroundColor: containerStyle.backgroundColor },
+          isActive && [styles.themeOptionActive, { borderColor }]
+        ]}
+        onPress={() => setMode(value)}
+        accessibilityLabel={`${label} theme`}
+        accessibilityRole="button"
+      >
+        <View style={styles.swatchContainer}>
+          {value === 'system' ? (
+            <View style={styles.systemSwatch}>
+              <View style={[styles.swatchPart, { backgroundColor: lightColors.background }]} />
+              <View style={[styles.swatchPart, { backgroundColor: darkColors.background }]} />
+            </View>
+          ) : (
+            <View style={[styles.swatch, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
+              <View style={[styles.swatchIndicator, { backgroundColor: themeColors.primary }]} />
+            </View>
+          )}
+        </View>
+        <Text style={[styles.themeOptionText, { color: textStyle.color }, isActive && styles.themeOptionTextActive]}>
+          {label}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        indicatorStyle={isDark ? 'white' : 'black'}
+      >
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Appearance</Text>
-          <View style={styles.themeSelector}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.themeSelector}
+          >
             {renderThemeOption('system', 'System')}
             {renderThemeOption('light', 'Light')}
             {renderThemeOption('dark', 'Dark')}
-          </View>
+            {renderThemeOption('sakura', 'Sakura')}
+            {renderThemeOption('forest', 'Forest')}
+            {renderThemeOption('champagne', 'Champagne')}
+            {renderThemeOption('nord', 'Nord')}
+            {renderThemeOption('sunset', 'Sunset')}
+            {renderThemeOption('ocean', 'Ocean')}
+            {renderThemeOption('crimson', 'Crimson')}
+            {renderThemeOption('slate', 'Slate')}
+          </ScrollView>
         </View>
 
         <View style={styles.section}>
