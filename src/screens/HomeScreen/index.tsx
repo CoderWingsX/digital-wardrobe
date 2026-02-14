@@ -27,39 +27,44 @@ export default function HomeScreen() {
 
   const [shuffledPair, setShuffledPair] = useState<{ top?: WardrobeItem, bottom?: WardrobeItem }>({});
 
+  const tops = useMemo(() => items.filter(i =>
+    ['top', 'shirt', 't-shirt', 'jacket', 'coat', 'sweatshirt', 'hoodie'].some(word => i.category.toLowerCase().includes(word))
+  ), [items]);
+
+  const bottoms = useMemo(() => items.filter(i =>
+    ['bottom', 'pants', 'trousers', 'shorts', 'skirt', 'jeans'].some(word => i.category.toLowerCase().includes(word))
+  ), [items]);
+
+  const canShuffle = tops.length > 0 && bottoms.length > 0;
+
   const performShuffle = useCallback(() => {
-    if (items.length < 2) return;
+    if (!canShuffle) return;
 
-    // A bit of logic to guess what's a top and what's a bottom
-    const tops = items.filter(i =>
-      ['top', 'shirt', 't-shirt', 'jacket', 'coat', 'sweatshirt', 'hoodie'].some(word => i.category.toLowerCase().includes(word))
-    );
-    const bottoms = items.filter(i =>
-      ['bottom', 'pants', 'trousers', 'shorts', 'skirt', 'jeans'].some(word => i.category.toLowerCase().includes(word))
-    );
+    const randomTop = tops[Math.floor(Math.random() * tops.length)];
+    const eligibleBottoms = bottoms.filter(b => b.id !== randomTop.id);
 
-    let randomTop, randomBottom;
-
-    if (tops.length > 0) {
-      randomTop = tops[Math.floor(Math.random() * tops.length)];
-    } else {
-      randomTop = items[Math.floor(Math.random() * items.length)];
-    }
-
-    if (bottoms.length > 0) {
-      randomBottom = bottoms.filter(b => b.id !== randomTop?.id)[Math.floor(Math.random() * bottoms.length)];
-    } else {
-      randomBottom = items.filter(b => b.id !== randomTop?.id)[Math.floor(Math.random() * items.length)];
-    }
+    // If we have other bottoms, pick one. Otherwise, if top and bottom are allowed to be the same (rare for these categories), allow it.
+    const randomBottom = eligibleBottoms.length > 0
+      ? eligibleBottoms[Math.floor(Math.random() * eligibleBottoms.length)]
+      : bottoms[Math.floor(Math.random() * bottoms.length)];
 
     setShuffledPair({ top: randomTop, bottom: randomBottom });
-  }, [items]);
+  }, [tops, bottoms, canShuffle]);
 
   useEffect(() => {
-    if (items.length >= 2 && !shuffledPair.top) {
-      performShuffle();
+    // Check if current shuffled items are still in the wardrobe
+    const isTopValid = shuffledPair.top && items.some(i => i.id === shuffledPair.top?.id);
+    const isBottomValid = shuffledPair.bottom && items.some(i => i.id === shuffledPair.bottom?.id);
+
+    if (canShuffle) {
+      if (!isTopValid || !isBottomValid) {
+        performShuffle();
+      }
+    } else if (shuffledPair.top || shuffledPair.bottom) {
+      // Clear if we can't shuffle anymore
+      setShuffledPair({});
     }
-  }, [items, shuffledPair, performShuffle]);
+  }, [canShuffle, items, shuffledPair, performShuffle]);
 
   // Get recently added items (last 4)
   const recentItems = useMemo(() => {
@@ -179,7 +184,7 @@ export default function HomeScreen() {
 
       {/* Style Shuffle Section (Only if 2+ items) OR Quote */}
       <View style={styles.section}>
-        {items.length >= 2 ? (
+        {canShuffle ? (
           <>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>Style Shuffle</Text>
