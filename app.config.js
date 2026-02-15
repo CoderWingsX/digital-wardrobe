@@ -34,7 +34,9 @@ export default ({ config }) => ({
   },
   web: {
     favicon: "./assets/favicon.png",
+    bundler: "metro",
   },
+  platforms: ["ios", "android"],
   plugins: [
     "expo-sqlite",
     [
