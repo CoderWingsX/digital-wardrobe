@@ -1,25 +1,25 @@
 import React, { useState } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { ImageEditor } from 'expo-image-editor';
 import CustomDialog from './CustomDialog';
 import StyledButton from './StyledButton';
 
 type Props = {
     onImageSelected: (uri: string) => void;
     title?: string;
-    /** Aspect ratio for cropping (width/height). Default is free-form. */
-    aspectRatio?: number;
+    /** Aspect ratio [width, height] for cropping. Default is [1, 1] (square). */
+    aspect?: [number, number];
+    /** Allow editing/cropping. Default is true. */
+    allowsEditing?: boolean;
 };
 
 export default function ImagePickerButton({
     onImageSelected,
     title = 'Pick an Image',
-    aspectRatio,
+    aspect = [1, 1],
+    allowsEditing = true,
 }: Props) {
     const [dialogVisible, setDialogVisible] = useState(false);
-    const [editorVisible, setEditorVisible] = useState(false);
-    const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
 
     const pickImage = async (launcher: typeof ImagePicker.launchCameraAsync | typeof ImagePicker.launchImageLibraryAsync) => {
         try {
@@ -41,17 +41,19 @@ export default function ImagePickerButton({
                 return;
             }
 
-            // Pick image without editing (we'll use custom editor)
             const result = await launcher({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: false,
-                quality: 1,
+                allowsEditing,
+                aspect,
+                quality: 0.8,
+                // On iOS, present as fullscreen to avoid UI conflicts
+                presentationStyle: Platform.OS === 'ios' 
+                    ? ImagePicker.UIImagePickerPresentationStyle.FULL_SCREEN 
+                    : undefined,
             });
 
             if (!result.canceled && result.assets && result.assets.length > 0) {
-                // Open custom editor with the selected image
-                setSelectedImageUri(result.assets[0].uri);
-                setEditorVisible(true);
+                onImageSelected(result.assets[0].uri);
             }
         } catch (err) {
             console.error('ImagePicker Error:', err);
@@ -61,19 +63,6 @@ export default function ImagePickerButton({
 
     const handlePickImage = () => {
         setDialogVisible(true);
-    };
-
-    const handleEditorDone = (result: { uri: string }) => {
-        setEditorVisible(false);
-        setSelectedImageUri(null);
-        if (result?.uri) {
-            onImageSelected(result.uri);
-        }
-    };
-
-    const handleEditorCancel = () => {
-        setEditorVisible(false);
-        setSelectedImageUri(null);
     };
 
     return (
@@ -115,17 +104,6 @@ export default function ImagePickerButton({
                         onPress: () => setDialogVisible(false),
                     },
                 ]}
-            />
-
-            <ImageEditor
-                visible={editorVisible}
-                onCloseEditor={handleEditorCancel}
-                imageUri={selectedImageUri || ''}
-                fixedCropAspectRatio={aspectRatio || 1}
-                lockAspectRatio={!!aspectRatio}
-                minimumCropDimensions={{ width: 100, height: 100 }}
-                onEditingComplete={handleEditorDone}
-                mode="crop-only"
             />
         </>
     );
