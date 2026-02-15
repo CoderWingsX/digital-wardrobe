@@ -46,9 +46,19 @@ export default function AddItemScreen() {
   const editItem = route.params?.item;
   const isEditing = !!editItem;
 
-  const [name, setName] = useState(editItem?.name || '');
-  const [description, setDescription] = useState(editItem?.description || '');
-  const [category, setCategory] = useState(editItem?.category || '');
+  // Track "saved" state to compare against for unsaved changes detection
+  const [savedState, setSavedState] = useState({
+    name: editItem?.name || '',
+    description: editItem?.description || '',
+    category: editItem?.category || '',
+    tags: editItem?.tags || [],
+    images: editItem?.images || [],
+    metadata: editItem?.metadata || {},
+  });
+
+  const [name, setName] = useState(savedState.name);
+  const [description, setDescription] = useState(savedState.description);
+  const [category, setCategory] = useState(savedState.category);
 
   // Transform metadata object to array for editing, or use defaults
   const initialMetadata = useMemo(() => {
@@ -76,38 +86,29 @@ export default function AddItemScreen() {
   }, [editItem]);
 
   const [metadata, setMetadata] = useState<{ key: string; value: string }[]>(initialMetadata);
-  const [tags, setTags] = useState<string[]>(editItem?.tags || []);
-  const [images, setImages] = useState<string[]>(editItem?.images || []);
+  const [tags, setTags] = useState<string[]>(savedState.tags);
+  const [images, setImages] = useState<string[]>(savedState.images);
   const [multiAdd, setMultiAdd] = useState(false);
   const [isTagInputFocused, setIsTagInputFocused] = useState(false);
 
-  // Detect if form has unsaved changes
+  // Detect if form has unsaved changes by comparing to saved state
   const hasUnsavedChanges = useMemo(() => {
-    if (isEditing) {
-      if (name !== editItem.name) return true;
-      if (description !== editItem.description) return true;
-      if (category !== editItem.category) return true;
-      if (JSON.stringify(tags) !== JSON.stringify(editItem.tags)) return true;
-      if (JSON.stringify(images) !== JSON.stringify(editItem.images)) return true;
-      // Metadata check
-      const currentMetaObj = Object.fromEntries(
-        metadata.filter(m => m.key && m.value.trim() !== '').map(m => [m.key, m.value])
-      );
-      if (JSON.stringify(currentMetaObj) !== JSON.stringify(editItem.metadata)) return true;
-      return false;
-    }
-
-    if (name.trim() !== '') return true;
-    if (description.trim() !== '') return true;
-    if (category !== '') return true;
-    if (images.length > 0) return true;
-    if (tags.length > 0) return true;
-    if (metadata.some(m => m.value.trim() !== '')) return true;
+    if (name !== savedState.name) return true;
+    if (description !== savedState.description) return true;
+    if (category !== savedState.category) return true;
+    if (JSON.stringify(tags) !== JSON.stringify(savedState.tags)) return true;
+    if (JSON.stringify(images) !== JSON.stringify(savedState.images)) return true;
+    
+    const currentMetaObj = Object.fromEntries(
+      metadata.filter(m => m.key && m.value.trim() !== '').map(m => [m.key, m.value])
+    );
+    if (JSON.stringify(currentMetaObj) !== JSON.stringify(savedState.metadata)) return true;
+    
     return false;
-  }, [name, description, category, images, tags, metadata, isEditing, editItem]);
+  }, [name, description, category, images, tags, metadata, savedState]);
 
   // Show warning when navigating away with unsaved changes
-  const { skipWarningOnce } = useUnsavedChangesWarning(hasUnsavedChanges);
+  useUnsavedChangesWarning(hasUnsavedChanges);
 
   const addMetadataField = () => {
     setMetadata([...metadata, { key: '', value: '' }]);
@@ -181,7 +182,17 @@ export default function AddItemScreen() {
             images: savedImageUris,
           });
 
-          if (!multiAdd) {
+          if (multiAdd) {
+            // Reset form for next item
+            const emptyState = {
+              name: '',
+              description: '',
+              category: '',
+              tags: [],
+              images: [],
+              metadata: {},
+            };
+            setSavedState(emptyState);
             setName('');
             setDescription('');
             setCategory('');
@@ -195,6 +206,16 @@ export default function AddItemScreen() {
             setImages([]);
           }
         }
+        
+        // Update saved state so hasUnsavedChanges becomes false
+        setSavedState({
+          name,
+          description,
+          category,
+          tags: tagArr,
+          images: savedImageUris,
+          metadata: metaObj,
+        });
       } catch (err) {
         console.error(err);
         Alert.alert('Error', `Failed to ${isEditing ? 'update' : 'add'} item`);
@@ -324,9 +345,6 @@ export default function AddItemScreen() {
                 const result = await handleAddItem();
 
                 if (!result) return;
-
-                // Skip unsaved changes warning since we just saved
-                skipWarningOnce();
 
                 if (isEditing) {
                   Alert.alert('Success', 'Item updated!');
