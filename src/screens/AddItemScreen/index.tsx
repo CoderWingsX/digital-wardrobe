@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import {
   Alert,
   View,
@@ -90,7 +90,6 @@ export default function AddItemScreen() {
   const [images, setImages] = useState<string[]>(savedState.images);
   const [multiAdd, setMultiAdd] = useState(false);
   const [isTagInputFocused, setIsTagInputFocused] = useState(false);
-  const justSavedRef = useRef(false);
 
   // Detect if form has unsaved changes by comparing to saved state
   const hasUnsavedChanges = useMemo(() => {
@@ -108,8 +107,8 @@ export default function AddItemScreen() {
     return false;
   }, [name, description, category, images, tags, metadata, savedState]);
 
-  // Show warning when navigating away with unsaved changes (skip if just saved)
-  useUnsavedChangesWarning(hasUnsavedChanges, { skipRef: justSavedRef });
+  // Show warning when navigating away with unsaved changes
+  const { skipWarningOnce } = useUnsavedChangesWarning(hasUnsavedChanges);
 
   const addMetadataField = () => {
     setMetadata([...metadata, { key: '', value: '' }]);
@@ -347,8 +346,8 @@ export default function AddItemScreen() {
 
                 if (!result) return;
 
-                // Mark as just saved so warning doesn't show
-                justSavedRef.current = true;
+                // Skip warning since we intentionally saved
+                skipWarningOnce();
 
                 if (isEditing) {
                   Alert.alert('Success', 'Item updated!');
@@ -362,8 +361,7 @@ export default function AddItemScreen() {
                   return;
                 }
 
-                // Reset for next item in multi-add mode
-                justSavedRef.current = false;
+
 
                 Toast.show({
                   type: 'success',

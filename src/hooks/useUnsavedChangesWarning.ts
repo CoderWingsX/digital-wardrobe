@@ -1,4 +1,4 @@
-import { useEffect, useRef, MutableRefObject } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
@@ -7,31 +7,33 @@ import { useNavigation } from '@react-navigation/native';
  * Works with back button, gestures, and programmatic navigation.
  * 
  * @param hasUnsavedChanges - Whether there are unsaved changes to warn about
- * @param options - Optional config: message and skipRef to bypass warning
+ * @param message - Optional custom message for the alert
+ * @returns Object with skipWarningOnce function to bypass warning (call before goBack after save)
  */
 export function useUnsavedChangesWarning(
   hasUnsavedChanges: boolean,
-  options?: {
-    message?: string;
-    skipRef?: MutableRefObject<boolean>;
-  }
+  message: string = 'You have unsaved changes. Are you sure you want to discard them?'
 ) {
   const navigation = useNavigation();
-  const message = options?.message ?? 'You have unsaved changes. Are you sure you want to discard them?';
-  const skipRef = options?.skipRef;
+  const skipNextWarning = useRef(false);
   const hasUnsavedRef = useRef(hasUnsavedChanges);
-  
-  // Keep ref in sync with prop
+
+  // Keep ref in sync with prop (refs are checked inside callback)
   useEffect(() => {
     hasUnsavedRef.current = hasUnsavedChanges;
   }, [hasUnsavedChanges]);
 
+  const skipWarningOnce = useCallback(() => {
+    skipNextWarning.current = true;
+  }, []);
+
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', (e) => {
-      // Check refs at event time, not at setup time
+      // Check ref at event time, not setup time
       if (!hasUnsavedRef.current) return;
-      if (skipRef?.current) {
-        skipRef.current = false;
+      
+      if (skipNextWarning.current) {
+        skipNextWarning.current = false;
         return;
       }
 
@@ -52,5 +54,7 @@ export function useUnsavedChangesWarning(
     });
 
     return unsubscribe;
-  }, [message, navigation, skipRef]);
+  }, [message, navigation]);
+
+  return { skipWarningOnce };
 }
