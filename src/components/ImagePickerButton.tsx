@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import ExpoImageCropTool from '@bsky.app/expo-image-crop-tool';
+import { ImageEditor } from 'expo-image-editor';
 import CustomDialog from './CustomDialog';
 import StyledButton from './StyledButton';
 
@@ -10,43 +10,16 @@ type Props = {
     title?: string;
     /** Aspect ratio for cropping (width/height). Default is free-form. */
     aspectRatio?: number;
-    /** Shape of the crop area. Default is 'rectangle'. */
-    cropShape?: 'rectangle' | 'circle';
 };
 
 export default function ImagePickerButton({
     onImageSelected,
     title = 'Pick an Image',
     aspectRatio,
-    cropShape = 'rectangle',
 }: Props) {
     const [dialogVisible, setDialogVisible] = useState(false);
-
-    const openCropper = async (imageUri: string) => {
-        try {
-            const result = await ExpoImageCropTool.openCropperAsync({
-                imageUri,
-                shape: cropShape,
-                aspectRatio,
-                format: 'jpeg',
-                compressImageQuality: 0.8,
-                rotationEnabled: true,
-                cancelButtonText: 'Cancel',
-                doneButtonText: 'Done',
-            });
-            
-            if (result?.path) {
-                onImageSelected(result.path);
-            }
-        } catch (err: any) {
-            // User cancelled - not an error
-            if (err?.message?.includes('cancel') || err?.message?.includes('Cancel')) {
-                return;
-            }
-            console.error('Cropper Error:', err);
-            Alert.alert('Error', 'Failed to crop image');
-        }
-    };
+    const [editorVisible, setEditorVisible] = useState(false);
+    const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
 
     const pickImage = async (launcher: typeof ImagePicker.launchCameraAsync | typeof ImagePicker.launchImageLibraryAsync) => {
         try {
@@ -68,7 +41,7 @@ export default function ImagePickerButton({
                 return;
             }
 
-            // Pick image without editing (we'll use custom cropper)
+            // Pick image without editing (we'll use custom editor)
             const result = await launcher({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
                 allowsEditing: false,
@@ -76,8 +49,9 @@ export default function ImagePickerButton({
             });
 
             if (!result.canceled && result.assets && result.assets.length > 0) {
-                // Open custom cropper with the selected image
-                await openCropper(result.assets[0].uri);
+                // Open custom editor with the selected image
+                setSelectedImageUri(result.assets[0].uri);
+                setEditorVisible(true);
             }
         } catch (err) {
             console.error('ImagePicker Error:', err);
@@ -87,6 +61,19 @@ export default function ImagePickerButton({
 
     const handlePickImage = () => {
         setDialogVisible(true);
+    };
+
+    const handleEditorDone = (result: { uri: string }) => {
+        setEditorVisible(false);
+        setSelectedImageUri(null);
+        if (result?.uri) {
+            onImageSelected(result.uri);
+        }
+    };
+
+    const handleEditorCancel = () => {
+        setEditorVisible(false);
+        setSelectedImageUri(null);
     };
 
     return (
@@ -128,6 +115,17 @@ export default function ImagePickerButton({
                         onPress: () => setDialogVisible(false),
                     },
                 ]}
+            />
+
+            <ImageEditor
+                visible={editorVisible}
+                onCloseEditor={handleEditorCancel}
+                imageUri={selectedImageUri || ''}
+                fixedCropAspectRatio={aspectRatio || 1}
+                lockAspectRatio={!!aspectRatio}
+                minimumCropDimensions={{ width: 100, height: 100 }}
+                onEditingComplete={handleEditorDone}
+                mode="crop-only"
             />
         </>
     );
