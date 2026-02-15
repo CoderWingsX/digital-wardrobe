@@ -107,7 +107,7 @@ export default function AddItemScreen() {
   }, [name, description, category, images, tags, metadata, isEditing, editItem]);
 
   // Show warning when navigating away with unsaved changes
-  useUnsavedChangesWarning(hasUnsavedChanges);
+  const { skipWarningOnce } = useUnsavedChangesWarning(hasUnsavedChanges);
 
   const addMetadataField = () => {
     setMetadata([...metadata, { key: '', value: '' }]);
@@ -324,6 +324,9 @@ export default function AddItemScreen() {
                 const result = await handleAddItem();
 
                 if (!result) return;
+
+                // Skip unsaved changes warning since we just saved
+                skipWarningOnce();
 
                 if (isEditing) {
                   Alert.alert('Success', 'Item updated!');
