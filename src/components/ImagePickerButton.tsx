@@ -1,107 +1,83 @@
 import React, { useState } from 'react';
-import { View, Alert } from 'react-native';
+import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import ExpoImageCropTool from '@bsky.app/expo-image-crop-tool';
 import CustomDialog from './CustomDialog';
 import StyledButton from './StyledButton';
 
 type Props = {
     onImageSelected: (uri: string) => void;
     title?: string;
+    /** Aspect ratio for cropping (width/height). Default is free-form. */
+    aspectRatio?: number;
+    /** Shape of the crop area. Default is 'rectangle'. */
+    cropShape?: 'rectangle' | 'circle';
 };
 
 export default function ImagePickerButton({
     onImageSelected,
     title = 'Pick an Image',
+    aspectRatio,
+    cropShape = 'rectangle',
 }: Props) {
     const [dialogVisible, setDialogVisible] = useState(false);
 
-    const pickFromLibrary = async () => {
+    const openCropper = async (imageUri: string) => {
         try {
-            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            if (status !== 'granted') {
-                Alert.alert(
-                    'Permission needed',
-                    'Sorry, we need camera roll permissions to make this work!'
-                );
+            const result = await ExpoImageCropTool.openCropperAsync({
+                imageUri,
+                shape: cropShape,
+                aspectRatio,
+                format: 'jpeg',
+                compressImageQuality: 0.8,
+                rotationEnabled: true,
+                cancelButtonText: 'Cancel',
+                doneButtonText: 'Done',
+            });
+            
+            if (result?.path) {
+                onImageSelected(result.path);
+            }
+        } catch (err: any) {
+            // User cancelled - not an error
+            if (err?.message?.includes('cancel') || err?.message?.includes('Cancel')) {
                 return;
             }
-
-            const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ['images'],
-                allowsEditing: true,
-                quality: 0.8,
-            });
-
-            if (!result.canceled && result.assets && result.assets.length > 0) {
-                onImageSelected(result.assets[0].uri);
-            }
-        } catch (err) {
-            console.error('ImagePicker Library Error:', err);
-            Alert.alert('Error', 'Failed to pick image from library');
+            console.error('Cropper Error:', err);
+            Alert.alert('Error', 'Failed to crop image');
         }
     };
 
-    const pickFromCamera = async () => {
-        try {
-            const { status } = await ImagePicker.requestCameraPermissionsAsync();
-            if (status !== 'granted') {
-                Alert.alert(
-                    'Permission needed',
-                    'Sorry, we need camera permissions to make this work!'
-                );
-                return;
-            }
-
-            const result = await ImagePicker.launchCameraAsync({
-                mediaTypes: ['images'],
-                allowsEditing: true,
-                quality: 0.8,
-            });
-
-            if (!result.canceled && result.assets && result.assets.length > 0) {
-                onImageSelected(result.assets[0].uri);
-            }
-        } catch (err) {
-            console.error('ImagePicker Camera Error:', err);
-            Alert.alert('Error', 'Failed to take photo');
-        }
-    };
     const pickImage = async (launcher: typeof ImagePicker.launchCameraAsync | typeof ImagePicker.launchImageLibraryAsync) => {
         try {
-            let permissionStatus;
             let permissionRequestFunction;
             let permissionAlertMessage;
-            let errorMessage;
 
             if (launcher === ImagePicker.launchCameraAsync) {
                 permissionRequestFunction = ImagePicker.requestCameraPermissionsAsync;
                 permissionAlertMessage = 'Sorry, we need camera permissions to make this work!';
-                errorMessage = 'Failed to take photo';
             } else {
                 permissionRequestFunction = ImagePicker.requestMediaLibraryPermissionsAsync;
                 permissionAlertMessage = 'Sorry, we need camera roll permissions to make this work!';
-                errorMessage = 'Failed to pick image from library';
             }
 
             const { status } = await permissionRequestFunction();
-            permissionStatus = status;
 
-            if (permissionStatus !== 'granted') {
-                Alert.alert(
-                    'Permission needed',
-                    permissionAlertMessage
-                );
+            if (status !== 'granted') {
+                Alert.alert('Permission needed', permissionAlertMessage);
                 return;
             }
 
+            // Pick image without editing (we'll use custom cropper)
             const result = await launcher({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: true,
-                quality: 0.8,
+                allowsEditing: false,
+                quality: 1,
             });
 
             if (!result.canceled && result.assets && result.assets.length > 0) {
-                onImageSelected(result.assets[0].uri);
+                // Open custom cropper with the selected image
+                await openCropper(result.assets[0].uri);
             }
         } catch (err) {
             console.error('ImagePicker Error:', err);
@@ -134,7 +110,7 @@ export default function ImagePickerButton({
                             setDialogVisible(false);
                             setTimeout(() => {
                                 pickImage(ImagePicker.launchCameraAsync);
-                            }, 500);
+                            }, 300);
                         },
                     },
                     {
@@ -143,7 +119,7 @@ export default function ImagePickerButton({
                             setDialogVisible(false);
                             setTimeout(() => {
                                 pickImage(ImagePicker.launchImageLibraryAsync);
-                            }, 500);
+                            }, 300);
                         },
                     },
                     {
