@@ -83,6 +83,7 @@ export default function AppNavigator() {
           component={AddItemScreen}
           options={({ route }) => ({
             title: route.params?.item ? 'Edit Item' : 'Add Item',
+            gestureEnabled: false, // Disable swipe - use Cancel/Save buttons
           })}
         />
         <Stack.Screen
