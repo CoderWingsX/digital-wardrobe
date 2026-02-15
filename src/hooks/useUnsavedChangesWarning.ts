@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, MutableRefObject } from 'react';
 import { Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
@@ -7,18 +7,34 @@ import { useNavigation } from '@react-navigation/native';
  * Works with back button, gestures, and programmatic navigation.
  * 
  * @param hasUnsavedChanges - Whether there are unsaved changes to warn about
- * @param message - Optional custom message for the alert
+ * @param options - Optional config: message and skipRef to bypass warning
  */
 export function useUnsavedChangesWarning(
   hasUnsavedChanges: boolean,
-  message: string = 'You have unsaved changes. Are you sure you want to discard them?'
+  options?: {
+    message?: string;
+    skipRef?: MutableRefObject<boolean>;
+  }
 ) {
   const navigation = useNavigation();
+  const message = options?.message ?? 'You have unsaved changes. Are you sure you want to discard them?';
+  const skipRef = options?.skipRef;
+  const hasUnsavedRef = useRef(hasUnsavedChanges);
+  
+  // Keep ref in sync with prop
+  useEffect(() => {
+    hasUnsavedRef.current = hasUnsavedChanges;
+  }, [hasUnsavedChanges]);
 
   useEffect(() => {
-    if (!hasUnsavedChanges) return;
-
     const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      // Check refs at event time, not at setup time
+      if (!hasUnsavedRef.current) return;
+      if (skipRef?.current) {
+        skipRef.current = false;
+        return;
+      }
+
       e.preventDefault();
 
       Alert.alert(
@@ -36,5 +52,5 @@ export function useUnsavedChangesWarning(
     });
 
     return unsubscribe;
-  }, [hasUnsavedChanges, message, navigation]);
+  }, [message, navigation, skipRef]);
 }

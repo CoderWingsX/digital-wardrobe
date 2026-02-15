@@ -109,7 +109,7 @@ export default function AddItemScreen() {
   }, [name, description, category, images, tags, metadata, savedState]);
 
   // Show warning when navigating away with unsaved changes (skip if just saved)
-  useUnsavedChangesWarning(hasUnsavedChanges && !justSavedRef.current);
+  useUnsavedChangesWarning(hasUnsavedChanges, { skipRef: justSavedRef });
 
   const addMetadataField = () => {
     setMetadata([...metadata, { key: '', value: '' }]);
