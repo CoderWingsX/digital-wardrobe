@@ -1,25 +1,22 @@
 import React, { useState } from 'react';
 import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { ExpoImageManipulator } from 'react-native-expo-image-cropper';
 import CustomDialog from './CustomDialog';
 import StyledButton from './StyledButton';
 
 type Props = {
     onImageSelected: (uri: string) => void;
     title?: string;
-    /** Skip the editor and use image as-is. Default is false. */
-    skipEditor?: boolean;
+    /** Allow editing/cropping. Default is true. */
+    allowsEditing?: boolean;
 };
 
 export default function ImagePickerButton({
     onImageSelected,
     title = 'Pick an Image',
-    skipEditor = false,
+    allowsEditing = true,
 }: Props) {
     const [dialogVisible, setDialogVisible] = useState(false);
-    const [editorVisible, setEditorVisible] = useState(false);
-    const [pendingImageUri, setPendingImageUri] = useState<string>('');
 
     const pickImage = async (launcher: typeof ImagePicker.launchCameraAsync | typeof ImagePicker.launchImageLibraryAsync) => {
         try {
@@ -43,19 +40,12 @@ export default function ImagePickerButton({
 
             const result = await launcher({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: false,
-                quality: 1,
+                allowsEditing,
+                quality: 0.8,
             });
 
             if (!result.canceled && result.assets && result.assets.length > 0) {
-                const uri = result.assets[0].uri;
-                
-                if (skipEditor) {
-                    onImageSelected(uri);
-                } else {
-                    setPendingImageUri(uri);
-                    setEditorVisible(true);
-                }
+                onImageSelected(result.assets[0].uri);
             }
         } catch (err) {
             console.error('ImagePicker Error:', err);
@@ -106,25 +96,6 @@ export default function ImagePickerButton({
                         onPress: () => setDialogVisible(false),
                     },
                 ]}
-            />
-
-            <ExpoImageManipulator
-                photo={{ uri: pendingImageUri }}
-                isVisible={editorVisible}
-                onPictureChoosed={(data: { uri: string }) => {
-                    setEditorVisible(false);
-                    setPendingImageUri('');
-                    onImageSelected(data.uri);
-                }}
-                onToggleModal={() => {
-                    setEditorVisible(false);
-                    setPendingImageUri('');
-                }}
-                saveOptions={{
-                    compress: 0.8,
-                    format: 'jpeg',
-                    base64: false,
-                }}
             />
         </>
     );
