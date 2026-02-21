@@ -1,15 +1,13 @@
 import React, { useState } from 'react';
 import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { ExpoImageManipulator } from 'react-native-expo-image-cropper';
 import CustomDialog from './CustomDialog';
 import StyledButton from './StyledButton';
-import ImageEditorModal from './ImageEditorModal';
 
 type Props = {
     onImageSelected: (uri: string) => void;
     title?: string;
-    /** Aspect ratio (width/height) for cropping. Undefined = free-form. */
-    aspectRatio?: number;
     /** Skip the editor and use image as-is. Default is false. */
     skipEditor?: boolean;
 };
@@ -17,12 +15,11 @@ type Props = {
 export default function ImagePickerButton({
     onImageSelected,
     title = 'Pick an Image',
-    aspectRatio,
     skipEditor = false,
 }: Props) {
     const [dialogVisible, setDialogVisible] = useState(false);
     const [editorVisible, setEditorVisible] = useState(false);
-    const [pendingImageUri, setPendingImageUri] = useState<string | null>(null);
+    const [pendingImageUri, setPendingImageUri] = useState<string>('');
 
     const pickImage = async (launcher: typeof ImagePicker.launchCameraAsync | typeof ImagePicker.launchImageLibraryAsync) => {
         try {
@@ -46,8 +43,8 @@ export default function ImagePickerButton({
 
             const result = await launcher({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: false, // We use our custom editor
-                quality: 1, // Full quality, we compress in editor
+                allowsEditing: false,
+                quality: 1,
             });
 
             if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -56,7 +53,6 @@ export default function ImagePickerButton({
                 if (skipEditor) {
                     onImageSelected(uri);
                 } else {
-                    // Open custom editor
                     setPendingImageUri(uri);
                     setEditorVisible(true);
                 }
@@ -65,17 +61,6 @@ export default function ImagePickerButton({
             console.error('ImagePicker Error:', err);
             Alert.alert('Error', 'Failed to pick image');
         }
-    };
-
-    const handleEditorDone = (croppedUri: string) => {
-        setEditorVisible(false);
-        setPendingImageUri(null);
-        onImageSelected(croppedUri);
-    };
-
-    const handleEditorCancel = () => {
-        setEditorVisible(false);
-        setPendingImageUri(null);
     };
 
     const handlePickImage = () => {
@@ -123,15 +108,24 @@ export default function ImagePickerButton({
                 ]}
             />
 
-            {pendingImageUri && (
-                <ImageEditorModal
-                    visible={editorVisible}
-                    imageUri={pendingImageUri}
-                    aspectRatio={aspectRatio}
-                    onCancel={handleEditorCancel}
-                    onDone={handleEditorDone}
-                />
-            )}
+            <ExpoImageManipulator
+                photo={{ uri: pendingImageUri }}
+                isVisible={editorVisible}
+                onPictureChoosed={(data: { uri: string }) => {
+                    setEditorVisible(false);
+                    setPendingImageUri('');
+                    onImageSelected(data.uri);
+                }}
+                onToggleModal={() => {
+                    setEditorVisible(false);
+                    setPendingImageUri('');
+                }}
+                saveOptions={{
+                    compress: 0.8,
+                    format: 'jpeg',
+                    base64: false,
+                }}
+            />
         </>
     );
 }
