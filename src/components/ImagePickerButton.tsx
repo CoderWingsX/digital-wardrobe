@@ -1,25 +1,28 @@
 import React, { useState } from 'react';
-import { Alert, Platform } from 'react-native';
+import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import CustomDialog from './CustomDialog';
 import StyledButton from './StyledButton';
+import ImageEditorModal from './ImageEditorModal';
 
 type Props = {
     onImageSelected: (uri: string) => void;
     title?: string;
-    /** Aspect ratio [width, height] for cropping. Default is [1, 1] (square). */
-    aspect?: [number, number];
-    /** Allow editing/cropping. Default is true. */
-    allowsEditing?: boolean;
+    /** Aspect ratio (width/height) for cropping. Undefined = free-form. */
+    aspectRatio?: number;
+    /** Skip the editor and use image as-is. Default is false. */
+    skipEditor?: boolean;
 };
 
 export default function ImagePickerButton({
     onImageSelected,
     title = 'Pick an Image',
-    aspect = [1, 1],
-    allowsEditing = true,
+    aspectRatio,
+    skipEditor = false,
 }: Props) {
     const [dialogVisible, setDialogVisible] = useState(false);
+    const [editorVisible, setEditorVisible] = useState(false);
+    const [pendingImageUri, setPendingImageUri] = useState<string | null>(null);
 
     const pickImage = async (launcher: typeof ImagePicker.launchCameraAsync | typeof ImagePicker.launchImageLibraryAsync) => {
         try {
@@ -43,22 +46,36 @@ export default function ImagePickerButton({
 
             const result = await launcher({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing,
-                aspect,
-                quality: 0.8,
-                // On iOS, present as fullscreen to avoid UI conflicts
-                presentationStyle: Platform.OS === 'ios' 
-                    ? ImagePicker.UIImagePickerPresentationStyle.FULL_SCREEN 
-                    : undefined,
+                allowsEditing: false, // We use our custom editor
+                quality: 1, // Full quality, we compress in editor
             });
 
             if (!result.canceled && result.assets && result.assets.length > 0) {
-                onImageSelected(result.assets[0].uri);
+                const uri = result.assets[0].uri;
+                
+                if (skipEditor) {
+                    onImageSelected(uri);
+                } else {
+                    // Open custom editor
+                    setPendingImageUri(uri);
+                    setEditorVisible(true);
+                }
             }
         } catch (err) {
             console.error('ImagePicker Error:', err);
             Alert.alert('Error', 'Failed to pick image');
         }
+    };
+
+    const handleEditorDone = (croppedUri: string) => {
+        setEditorVisible(false);
+        setPendingImageUri(null);
+        onImageSelected(croppedUri);
+    };
+
+    const handleEditorCancel = () => {
+        setEditorVisible(false);
+        setPendingImageUri(null);
     };
 
     const handlePickImage = () => {
@@ -105,6 +122,16 @@ export default function ImagePickerButton({
                     },
                 ]}
             />
+
+            {pendingImageUri && (
+                <ImageEditorModal
+                    visible={editorVisible}
+                    imageUri={pendingImageUri}
+                    aspectRatio={aspectRatio}
+                    onCancel={handleEditorCancel}
+                    onDone={handleEditorDone}
+                />
+            )}
         </>
     );
 }
