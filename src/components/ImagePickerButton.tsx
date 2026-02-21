@@ -1,22 +1,46 @@
 import React, { useState } from 'react';
 import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import ImageCropTool from '@bsky.app/expo-image-crop-tool';
 import CustomDialog from './CustomDialog';
 import StyledButton from './StyledButton';
 
 type Props = {
     onImageSelected: (uri: string) => void;
     title?: string;
-    /** Allow editing/cropping. Default is true. */
-    allowsEditing?: boolean;
+    /** Skip cropping and use image as-is. Default is false. */
+    skipCropping?: boolean;
 };
 
 export default function ImagePickerButton({
     onImageSelected,
     title = 'Pick an Image',
-    allowsEditing = true,
+    skipCropping = false,
 }: Props) {
     const [dialogVisible, setDialogVisible] = useState(false);
+
+    const openCropper = async (imageUri: string) => {
+        try {
+            const result = await ImageCropTool.openCropperAsync({
+                imageUri,
+                format: 'jpeg',
+                compressImageQuality: 0.8,
+                rotationEnabled: true,
+                cancelButtonText: 'Cancel',
+                doneButtonText: 'Done',
+            });
+            
+            if (result?.path) {
+                onImageSelected(result.path);
+            }
+        } catch (err: any) {
+            // User cancelled - not an error
+            if (err?.message?.toLowerCase().includes('cancel')) {
+                return;
+            }
+            console.error('Cropper Error:', err);
+        }
+    };
 
     const pickImage = async (launcher: typeof ImagePicker.launchCameraAsync | typeof ImagePicker.launchImageLibraryAsync) => {
         try {
@@ -40,12 +64,18 @@ export default function ImagePickerButton({
 
             const result = await launcher({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing,
-                quality: 0.8,
+                allowsEditing: false, // We use custom cropper
+                quality: 1,
             });
 
             if (!result.canceled && result.assets && result.assets.length > 0) {
-                onImageSelected(result.assets[0].uri);
+                const uri = result.assets[0].uri;
+                
+                if (skipCropping) {
+                    onImageSelected(uri);
+                } else {
+                    await openCropper(uri);
+                }
             }
         } catch (err) {
             console.error('ImagePicker Error:', err);
