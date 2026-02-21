@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Modal,
   View,
@@ -8,17 +8,18 @@ import {
   StyleSheet,
   Dimensions,
   ActivityIndicator,
+  PanResponder,
+  GestureResponderEvent,
+  PanResponderGestureState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-import Animated, { useSharedValue, useAnimatedStyle, runOnJS } from 'react-native-reanimated';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { useTheme } from '../contexts/ThemeContext';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CROP_MIN_SIZE = 80;
-const CORNER_SIZE = 44;
+const HANDLE_SIZE = 44;
 
 type Props = {
   visible: boolean;
@@ -26,6 +27,13 @@ type Props = {
   onCancel: () => void;
   onDone: (croppedUri: string) => void;
   aspectRatio?: number;
+};
+
+type CropBox = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 };
 
 type ImageInfo = {
@@ -48,20 +56,13 @@ export default function ImageEditorModal({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [imageInfo, setImageInfo] = useState<ImageInfo | null>(null);
+  const [cropBox, setCropBox] = useState<CropBox>({ x: 50, y: 100, width: 200, height: 200 });
+  const [activeHandle, setActiveHandle] = useState<string | null>(null);
   
-  // Crop box shared values for smooth animations
-  const cropX = useSharedValue(50);
-  const cropY = useSharedValue(100);
-  const cropWidth = useSharedValue(200);
-  const cropHeight = useSharedValue(200);
-  
-  // For tracking gesture start positions
-  const startX = useSharedValue(0);
-  const startY = useSharedValue(0);
-  const startWidth = useSharedValue(0);
-  const startHeight = useSharedValue(0);
+  // Refs for gesture tracking
+  const startCropBox = useRef<CropBox>({ x: 0, y: 0, width: 0, height: 0 });
 
-  // Load image and calculate dimensions
+  // Load image dimensions
   useEffect(() => {
     if (visible && imageUri) {
       setLoading(true);
@@ -86,24 +87,27 @@ export default function ImageEditorModal({
           const imageX = (containerWidth - displayWidth) / 2;
           const imageY = (containerHeight - displayHeight) / 2;
           
-          setImageInfo({
+          const info: ImageInfo = {
             originalWidth: width,
             originalHeight: height,
             displayWidth,
             displayHeight,
             imageX,
             imageY,
-          });
+          };
+          setImageInfo(info);
           
-          // Initialize crop box
+          // Initialize crop box centered
           const initialSize = Math.min(displayWidth, displayHeight) * 0.75;
-          const boxWidth = aspectRatio ? initialSize : initialSize;
+          const boxWidth = initialSize;
           const boxHeight = aspectRatio ? initialSize / aspectRatio : initialSize;
           
-          cropX.value = imageX + (displayWidth - boxWidth) / 2;
-          cropY.value = imageY + (displayHeight - boxHeight) / 2;
-          cropWidth.value = boxWidth;
-          cropHeight.value = boxHeight;
+          setCropBox({
+            x: imageX + (displayWidth - boxWidth) / 2,
+            y: imageY + (displayHeight - boxHeight) / 2,
+            width: boxWidth,
+            height: boxHeight,
+          });
           
           setLoading(false);
         },
@@ -115,139 +119,95 @@ export default function ImageEditorModal({
     }
   }, [visible, imageUri, aspectRatio]);
 
-  // Constrain crop box to image bounds
-  const constrain = useCallback((x: number, y: number, w: number, h: number) => {
-    if (!imageInfo) return { x, y, w, h };
-    
+  const constrainCropBox = (box: CropBox): CropBox => {
+    if (!imageInfo) return box;
     const { imageX, imageY, displayWidth, displayHeight } = imageInfo;
     
-    let newW = Math.max(CROP_MIN_SIZE, Math.min(w, displayWidth));
-    let newH = Math.max(CROP_MIN_SIZE, Math.min(h, displayHeight));
-    let newX = Math.max(imageX, Math.min(x, imageX + displayWidth - newW));
-    let newY = Math.max(imageY, Math.min(y, imageY + displayHeight - newH));
+    let { x, y, width, height } = box;
     
-    return { x: newX, y: newY, w: newW, h: newH };
-  }, [imageInfo]);
-
-  // Drag gesture for moving the entire crop box
-  const dragGesture = Gesture.Pan()
-    .onStart(() => {
-      startX.value = cropX.value;
-      startY.value = cropY.value;
-    })
-    .onUpdate((e) => {
-      if (!imageInfo) return;
-      const { imageX, imageY, displayWidth, displayHeight } = imageInfo;
-      
-      let newX = startX.value + e.translationX;
-      let newY = startY.value + e.translationY;
-      
-      // Constrain to image bounds
-      newX = Math.max(imageX, Math.min(newX, imageX + displayWidth - cropWidth.value));
-      newY = Math.max(imageY, Math.min(newY, imageY + displayHeight - cropHeight.value));
-      
-      cropX.value = newX;
-      cropY.value = newY;
-    });
-
-  // Corner resize gestures
-  const createCornerGesture = (corner: 'tl' | 'tr' | 'bl' | 'br') => {
-    return Gesture.Pan()
-      .onStart(() => {
-        startX.value = cropX.value;
-        startY.value = cropY.value;
-        startWidth.value = cropWidth.value;
-        startHeight.value = cropHeight.value;
-      })
-      .onUpdate((e) => {
-        if (!imageInfo) return;
-        const { imageX, imageY, displayWidth, displayHeight } = imageInfo;
-        
-        let newX = startX.value;
-        let newY = startY.value;
-        let newW = startWidth.value;
-        let newH = startHeight.value;
-        
-        if (corner === 'br') {
-          newW = startWidth.value + e.translationX;
-          newH = aspectRatio ? newW / aspectRatio : startHeight.value + e.translationY;
-        } else if (corner === 'bl') {
-          newW = startWidth.value - e.translationX;
-          newX = startX.value + e.translationX;
-          newH = aspectRatio ? newW / aspectRatio : startHeight.value + e.translationY;
-        } else if (corner === 'tr') {
-          newW = startWidth.value + e.translationX;
-          newH = aspectRatio ? newW / aspectRatio : startHeight.value - e.translationY;
-          if (!aspectRatio) newY = startY.value + e.translationY;
-          else newY = startY.value + startHeight.value - newH;
-        } else if (corner === 'tl') {
-          newW = startWidth.value - e.translationX;
-          newX = startX.value + e.translationX;
-          newH = aspectRatio ? newW / aspectRatio : startHeight.value - e.translationY;
-          if (!aspectRatio) newY = startY.value + e.translationY;
-          else newY = startY.value + startHeight.value - newH;
-        }
-        
-        // Enforce minimum size
-        if (newW < CROP_MIN_SIZE) {
-          if (corner === 'tl' || corner === 'bl') {
-            newX = startX.value + startWidth.value - CROP_MIN_SIZE;
-          }
-          newW = CROP_MIN_SIZE;
-          if (aspectRatio) newH = CROP_MIN_SIZE / aspectRatio;
-        }
-        if (newH < CROP_MIN_SIZE) {
-          if (corner === 'tl' || corner === 'tr') {
-            newY = startY.value + startHeight.value - CROP_MIN_SIZE;
-          }
-          newH = CROP_MIN_SIZE;
-        }
-        
-        // Constrain to bounds
-        newX = Math.max(imageX, Math.min(newX, imageX + displayWidth - CROP_MIN_SIZE));
-        newY = Math.max(imageY, Math.min(newY, imageY + displayHeight - CROP_MIN_SIZE));
-        if (newX + newW > imageX + displayWidth) newW = imageX + displayWidth - newX;
-        if (newY + newH > imageY + displayHeight) newH = imageY + displayHeight - newY;
-        
-        cropX.value = newX;
-        cropY.value = newY;
-        cropWidth.value = newW;
-        cropHeight.value = newH;
-      });
+    // Enforce minimum size
+    width = Math.max(CROP_MIN_SIZE, width);
+    height = Math.max(CROP_MIN_SIZE, height);
+    
+    // Constrain to image bounds
+    width = Math.min(width, displayWidth);
+    height = Math.min(height, displayHeight);
+    x = Math.max(imageX, Math.min(x, imageX + displayWidth - width));
+    y = Math.max(imageY, Math.min(y, imageY + displayHeight - height));
+    
+    return { x, y, width, height };
   };
 
-  const tlGesture = createCornerGesture('tl');
-  const trGesture = createCornerGesture('tr');
-  const blGesture = createCornerGesture('bl');
-  const brGesture = createCornerGesture('br');
+  // Pan responder for dragging crop box
+  const boxPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        startCropBox.current = { ...cropBox };
+      },
+      onPanResponderMove: (_, gesture) => {
+        const newBox = constrainCropBox({
+          x: startCropBox.current.x + gesture.dx,
+          y: startCropBox.current.y + gesture.dy,
+          width: startCropBox.current.width,
+          height: startCropBox.current.height,
+        });
+        setCropBox(newBox);
+      },
+    })
+  ).current;
 
-  // Animated styles
-  const cropBoxStyle = useAnimatedStyle(() => ({
-    left: cropX.value,
-    top: cropY.value,
-    width: cropWidth.value,
-    height: cropHeight.value,
-  }));
+  // Create corner pan responder
+  const createCornerResponder = (corner: 'tl' | 'tr' | 'bl' | 'br') => {
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        startCropBox.current = { ...cropBox };
+        setActiveHandle(corner);
+      },
+      onPanResponderMove: (_, gesture) => {
+        if (!imageInfo) return;
+        
+        const start = startCropBox.current;
+        let newBox = { ...start };
+        
+        switch (corner) {
+          case 'br':
+            newBox.width = start.width + gesture.dx;
+            newBox.height = aspectRatio ? newBox.width / aspectRatio : start.height + gesture.dy;
+            break;
+          case 'bl':
+            newBox.width = start.width - gesture.dx;
+            newBox.x = start.x + gesture.dx;
+            newBox.height = aspectRatio ? newBox.width / aspectRatio : start.height + gesture.dy;
+            break;
+          case 'tr':
+            newBox.width = start.width + gesture.dx;
+            newBox.height = aspectRatio ? newBox.width / aspectRatio : start.height - gesture.dy;
+            newBox.y = aspectRatio ? start.y + start.height - newBox.height : start.y + gesture.dy;
+            break;
+          case 'tl':
+            newBox.width = start.width - gesture.dx;
+            newBox.x = start.x + gesture.dx;
+            newBox.height = aspectRatio ? newBox.width / aspectRatio : start.height - gesture.dy;
+            newBox.y = aspectRatio ? start.y + start.height - newBox.height : start.y + gesture.dy;
+            break;
+        }
+        
+        setCropBox(constrainCropBox(newBox));
+      },
+      onPanResponderRelease: () => {
+        setActiveHandle(null);
+      },
+    });
+  };
 
-  const overlayTopStyle = useAnimatedStyle(() => ({
-    height: cropY.value,
-  }));
-
-  const overlayBottomStyle = useAnimatedStyle(() => ({
-    top: cropY.value + cropHeight.value,
-  }));
-
-  const overlayLeftStyle = useAnimatedStyle(() => ({
-    top: cropY.value,
-    width: cropX.value,
-    height: cropHeight.value,
-  }));
-
-  const overlayRightStyle = useAnimatedStyle(() => ({
-    top: cropY.value,
-    left: cropX.value + cropWidth.value,
-    height: cropHeight.value,
-  }));
+  const tlResponder = useRef(createCornerResponder('tl')).current;
+  const trResponder = useRef(createCornerResponder('tr')).current;
+  const blResponder = useRef(createCornerResponder('bl')).current;
+  const brResponder = useRef(createCornerResponder('br')).current;
 
   const handleDone = async () => {
     if (!imageInfo) return;
@@ -257,10 +217,10 @@ export default function ImageEditorModal({
       const scaleX = imageInfo.originalWidth / imageInfo.displayWidth;
       const scaleY = imageInfo.originalHeight / imageInfo.displayHeight;
       
-      const originX = (cropX.value - imageInfo.imageX) * scaleX;
-      const originY = (cropY.value - imageInfo.imageY) * scaleY;
-      const width = cropWidth.value * scaleX;
-      const height = cropHeight.value * scaleY;
+      const originX = (cropBox.x - imageInfo.imageX) * scaleX;
+      const originY = (cropBox.y - imageInfo.imageY) * scaleY;
+      const width = cropBox.width * scaleX;
+      const height = cropBox.height * scaleY;
       
       const result = await ImageManipulator.manipulateAsync(
         imageUri,
@@ -287,99 +247,108 @@ export default function ImageEditorModal({
 
   return (
     <Modal visible={visible} animationType="slide" statusBarTranslucent>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity onPress={onCancel} style={styles.headerButton}>
-              <Ionicons name="close" size={28} color="#fff" />
-            </TouchableOpacity>
-            
-            <Text style={styles.title}>Crop</Text>
-            
-            <TouchableOpacity onPress={handleDone} style={styles.headerButton} disabled={saving}>
-              {saving ? (
-                <ActivityIndicator color={colors.primary} />
-              ) : (
-                <Ionicons name="checkmark" size={28} color={colors.primary} />
-              )}
-            </TouchableOpacity>
-          </View>
-
-          {/* Image Area */}
-          <View style={styles.imageArea}>
-            {loading ? (
-              <ActivityIndicator size="large" color={colors.primary} />
-            ) : imageInfo && (
-              <>
-                {/* Image */}
-                <Image
-                  source={{ uri: imageUri }}
-                  style={{
-                    position: 'absolute',
-                    left: imageInfo.imageX,
-                    top: imageInfo.imageY,
-                    width: imageInfo.displayWidth,
-                    height: imageInfo.displayHeight,
-                  }}
-                  resizeMode="contain"
-                />
-
-                {/* Dark overlays */}
-                <Animated.View style={[styles.overlay, styles.overlayTop, overlayTopStyle]} />
-                <Animated.View style={[styles.overlay, styles.overlayBottom, overlayBottomStyle]} />
-                <Animated.View style={[styles.overlay, styles.overlayLeft, overlayLeftStyle]} />
-                <Animated.View style={[styles.overlay, styles.overlayRight, overlayRightStyle]} />
-
-                {/* Crop Box */}
-                <GestureDetector gesture={dragGesture}>
-                  <Animated.View style={[styles.cropBox, cropBoxStyle, { borderColor: '#fff' }]}>
-                    {/* Grid */}
-                    <View style={[styles.gridH, { top: '33.33%' }]} />
-                    <View style={[styles.gridH, { top: '66.66%' }]} />
-                    <View style={[styles.gridV, { left: '33.33%' }]} />
-                    <View style={[styles.gridV, { left: '66.66%' }]} />
-                  </Animated.View>
-                </GestureDetector>
-
-                {/* Corner handles - positioned absolutely */}
-                <GestureDetector gesture={tlGesture}>
-                  <Animated.View style={[styles.corner, styles.cornerTL, useAnimatedStyle(() => ({
-                    left: cropX.value - CORNER_SIZE / 2,
-                    top: cropY.value - CORNER_SIZE / 2,
-                  }))]} />
-                </GestureDetector>
-                
-                <GestureDetector gesture={trGesture}>
-                  <Animated.View style={[styles.corner, styles.cornerTR, useAnimatedStyle(() => ({
-                    left: cropX.value + cropWidth.value - CORNER_SIZE / 2,
-                    top: cropY.value - CORNER_SIZE / 2,
-                  }))]} />
-                </GestureDetector>
-                
-                <GestureDetector gesture={blGesture}>
-                  <Animated.View style={[styles.corner, styles.cornerBL, useAnimatedStyle(() => ({
-                    left: cropX.value - CORNER_SIZE / 2,
-                    top: cropY.value + cropHeight.value - CORNER_SIZE / 2,
-                  }))]} />
-                </GestureDetector>
-                
-                <GestureDetector gesture={brGesture}>
-                  <Animated.View style={[styles.corner, styles.cornerBR, useAnimatedStyle(() => ({
-                    left: cropX.value + cropWidth.value - CORNER_SIZE / 2,
-                    top: cropY.value + cropHeight.value - CORNER_SIZE / 2,
-                  }))]} />
-                </GestureDetector>
-              </>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={onCancel} style={styles.headerButton}>
+            <Ionicons name="close" size={28} color="#fff" />
+          </TouchableOpacity>
+          
+          <Text style={styles.title}>Crop</Text>
+          
+          <TouchableOpacity onPress={handleDone} style={styles.headerButton} disabled={saving}>
+            {saving ? (
+              <ActivityIndicator color={colors.primary} />
+            ) : (
+              <Ionicons name="checkmark" size={28} color={colors.primary} />
             )}
-          </View>
+          </TouchableOpacity>
+        </View>
 
-          {/* Footer */}
-          <View style={styles.footer}>
-            <Text style={styles.hint}>Drag to move • Drag corners to resize</Text>
-          </View>
-        </SafeAreaView>
-      </GestureHandlerRootView>
+        {/* Image Area */}
+        <View style={styles.imageArea}>
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+          ) : imageInfo && (
+            <>
+              {/* Image */}
+              <Image
+                source={{ uri: imageUri }}
+                style={{
+                  position: 'absolute',
+                  left: imageInfo.imageX,
+                  top: imageInfo.imageY,
+                  width: imageInfo.displayWidth,
+                  height: imageInfo.displayHeight,
+                }}
+                resizeMode="contain"
+              />
+
+              {/* Dark overlays */}
+              <View style={[styles.overlay, { top: 0, left: 0, right: 0, height: cropBox.y }]} pointerEvents="none" />
+              <View style={[styles.overlay, { top: cropBox.y + cropBox.height, left: 0, right: 0, bottom: 0 }]} pointerEvents="none" />
+              <View style={[styles.overlay, { top: cropBox.y, left: 0, width: cropBox.x, height: cropBox.height }]} pointerEvents="none" />
+              <View style={[styles.overlay, { top: cropBox.y, left: cropBox.x + cropBox.width, right: 0, height: cropBox.height }]} pointerEvents="none" />
+
+              {/* Crop Box (draggable) */}
+              <View
+                {...boxPanResponder.panHandlers}
+                style={[
+                  styles.cropBox,
+                  {
+                    left: cropBox.x,
+                    top: cropBox.y,
+                    width: cropBox.width,
+                    height: cropBox.height,
+                  },
+                ]}
+              >
+                {/* Grid */}
+                <View style={[styles.gridH, { top: '33.33%' }]} />
+                <View style={[styles.gridH, { top: '66.66%' }]} />
+                <View style={[styles.gridV, { left: '33.33%' }]} />
+                <View style={[styles.gridV, { left: '66.66%' }]} />
+              </View>
+
+              {/* Corner handles */}
+              <View
+                {...tlResponder.panHandlers}
+                style={[styles.handle, { left: cropBox.x - HANDLE_SIZE / 2, top: cropBox.y - HANDLE_SIZE / 2 }]}
+              >
+                <View style={[styles.handleCorner, styles.handleTL]} />
+              </View>
+              
+              <View
+                {...trResponder.panHandlers}
+                style={[styles.handle, { left: cropBox.x + cropBox.width - HANDLE_SIZE / 2, top: cropBox.y - HANDLE_SIZE / 2 }]}
+              >
+                <View style={[styles.handleCorner, styles.handleTR]} />
+              </View>
+              
+              <View
+                {...blResponder.panHandlers}
+                style={[styles.handle, { left: cropBox.x - HANDLE_SIZE / 2, top: cropBox.y + cropBox.height - HANDLE_SIZE / 2 }]}
+              >
+                <View style={[styles.handleCorner, styles.handleBL]} />
+              </View>
+              
+              <View
+                {...brResponder.panHandlers}
+                style={[styles.handle, { left: cropBox.x + cropBox.width - HANDLE_SIZE / 2, top: cropBox.y + cropBox.height - HANDLE_SIZE / 2 }]}
+              >
+                <View style={[styles.handleCorner, styles.handleBR]} />
+              </View>
+            </>
+          )}
+        </View>
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text style={styles.hint}>Drag to move • Drag corners to resize</Text>
+        </View>
+      </SafeAreaView>
     </Modal>
   );
 }
@@ -412,29 +381,19 @@ const styles = StyleSheet.create({
     flex: 1,
     position: 'relative',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   overlay: {
     position: 'absolute',
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
   },
-  overlayTop: {
-    top: 0,
-    left: 0,
-    right: 0,
-  },
-  overlayBottom: {
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  overlayLeft: {
-    left: 0,
-  },
-  overlayRight: {
-    right: 0,
-  },
   cropBox: {
     position: 'absolute',
     borderWidth: 2,
+    borderColor: '#fff',
   },
   gridH: {
     position: 'absolute',
@@ -450,31 +409,33 @@ const styles = StyleSheet.create({
     width: 1,
     backgroundColor: 'rgba(255,255,255,0.4)',
   },
-  corner: {
+  handle: {
     position: 'absolute',
-    width: CORNER_SIZE,
-    height: CORNER_SIZE,
-    backgroundColor: 'transparent',
+    width: HANDLE_SIZE,
+    height: HANDLE_SIZE,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  cornerTL: {
-    borderTopWidth: 4,
-    borderLeftWidth: 4,
+  handleCorner: {
+    width: 20,
+    height: 20,
     borderColor: '#fff',
   },
-  cornerTR: {
-    borderTopWidth: 4,
-    borderRightWidth: 4,
-    borderColor: '#fff',
+  handleTL: {
+    borderTopWidth: 3,
+    borderLeftWidth: 3,
   },
-  cornerBL: {
-    borderBottomWidth: 4,
-    borderLeftWidth: 4,
-    borderColor: '#fff',
+  handleTR: {
+    borderTopWidth: 3,
+    borderRightWidth: 3,
   },
-  cornerBR: {
-    borderBottomWidth: 4,
-    borderRightWidth: 4,
-    borderColor: '#fff',
+  handleBL: {
+    borderBottomWidth: 3,
+    borderLeftWidth: 3,
+  },
+  handleBR: {
+    borderBottomWidth: 3,
+    borderRightWidth: 3,
   },
   footer: {
     paddingVertical: 16,
