@@ -12,6 +12,7 @@ import WardrobeScreen from '../screens/WardrobeScreen/index';
 import SettingsScreen from '../screens/SettingsScreen/index';
 import ItemDetailsScreen from '../screens/ItemDetailsScreen/index';
 import AddItemScreen from '../screens/AddItemScreen/index';
+import ImageEditorScreen from '../screens/ImageEditorScreen/index';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -90,6 +91,15 @@ export default function AppNavigator() {
           name="ItemDetails"
           component={ItemDetailsScreen}
           options={{ title: 'Item Details' }}
+        />
+        <Stack.Screen
+          name="ImageEditor"
+          component={ImageEditorScreen}
+          options={{
+            headerShown: false,
+            gestureEnabled: false,
+            cardStyle: { backgroundColor: '#000' },
+          }}
         />
       </Stack.Navigator>
     </NavigationContainer>

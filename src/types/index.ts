@@ -30,6 +30,7 @@ export type RootStackParamList = {
   Settings: undefined;
   AddItem: { item?: WardrobeItem };
   ItemDetails: { itemId: number };
+  ImageEditor: { imageUri: string };
 };
 
 // Filter state for search screen

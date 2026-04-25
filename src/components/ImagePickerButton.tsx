@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import ImageCropTool from '@bsky.app/expo-image-crop-tool';
+import { useNavigation } from '@react-navigation/native';
+import { openImageEditor } from '../lib/imageEditorBridge';
 import CustomDialog from './CustomDialog';
 import StyledButton from './StyledButton';
 
@@ -18,29 +19,7 @@ export default function ImagePickerButton({
     skipCropping = false,
 }: Props) {
     const [dialogVisible, setDialogVisible] = useState(false);
-
-    const openCropper = async (imageUri: string) => {
-        try {
-            const result = await ImageCropTool.openCropperAsync({
-                imageUri,
-                format: 'jpeg',
-                compressImageQuality: 0.8,
-                rotationEnabled: true,
-                cancelButtonText: 'Cancel',
-                doneButtonText: 'Done',
-            });
-            
-            if (result?.path) {
-                onImageSelected(result.path);
-            }
-        } catch (err: any) {
-            // User cancelled - not an error
-            if (err?.message?.toLowerCase().includes('cancel')) {
-                return;
-            }
-            console.error('Cropper Error:', err);
-        }
-    };
+    const navigation = useNavigation();
 
     const pickImage = async (launcher: typeof ImagePicker.launchCameraAsync | typeof ImagePicker.launchImageLibraryAsync) => {
         try {
@@ -63,8 +42,8 @@ export default function ImagePickerButton({
             }
 
             const result = await launcher({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: false, // We use custom cropper
+                mediaTypes: ['images'],
+                allowsEditing: false,
                 quality: 1,
             });
 
@@ -74,7 +53,10 @@ export default function ImagePickerButton({
                 if (skipCropping) {
                     onImageSelected(uri);
                 } else {
-                    await openCropper(uri);
+                    const editedUri = await openImageEditor(navigation, uri);
+                    if (editedUri) {
+                        onImageSelected(editedUri);
+                    }
                 }
             }
         } catch (err) {
