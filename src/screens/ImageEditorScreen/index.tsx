@@ -75,8 +75,6 @@ export default function ImageEditorScreen() {
   const cropInitialized = useRef(false);
   // Normalized crop coords (0–1 fractions of image at scale=1)
   const cropNormRef = useRef({ l: 0, t: 0, r: 1, b: 1 });
-  // Ref for breaking declaration-order dependency
-  const zoomToCropFn = useRef<() => void>(() => {});
 
   // Shared value for crop aspect ratio (0 = free, otherwise w/h ratio)
   const cropRatioSV = useSharedValue(0);
@@ -322,30 +320,7 @@ export default function ImageEditorScreen() {
       runOnJS(updateCropFromViewport)(s, finalTX, finalTY);
     });
 
-  const handleDoubleTap = useCallback(() => {
-    if (hasCropped) {
-      // Re-zoom to crop area
-      zoomToCropFn.current();
-    } else {
-      scale.value = withTiming(1, { duration: 250 });
-      translateX.value = withTiming(0, { duration: 250 });
-      translateY.value = withTiming(0, { duration: 250 });
-      savedScale.value = 1;
-      savedTX.value = 0;
-      savedTY.value = 0;
-    }
-  }, [hasCropped]);
-
-  const doubleTapGesture = Gesture.Tap()
-    .enabled(mode === "move")
-    .numberOfTaps(2)
-    .maxDuration(250)
-    .onEnd(() => {
-      runOnJS(handleDoubleTap)();
-    });
-
   const imageGesture = Gesture.Simultaneous(
-    doubleTapGesture,
     panGesture,
     pinchGesture,
   );
@@ -796,8 +771,6 @@ export default function ImageEditorScreen() {
     cropR.value = withTiming(imgL + n.r * imgW, dur);
     cropB.value = withTiming(imgT + n.b * imgH, dur);
   }, [viewportSize, visualW, visualH]);
-  // Keep ref in sync for forward references
-  zoomToCropFn.current = zoomToCropArea;
 
   // Re-clamp crop rect when viewport resizes in crop mode
   // (handles aspect ratio row appearing/disappearing)
@@ -1137,7 +1110,7 @@ export default function ImageEditorScreen() {
       ? "Drag corners to resize · Drag inside to move crop"
       : mode === "rotate"
         ? "Slide to rotate · Tap 0° to reset"
-        : "Pinch to zoom · Pan to move · Double-tap to reset";
+        : "Pinch to zoom · Pan to move";
 
   return (
     <View style={styles.container}>
