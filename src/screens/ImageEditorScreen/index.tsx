@@ -72,6 +72,10 @@ export default function ImageEditorScreen() {
   const [cropAspectRatio, setCropAspectRatio] =
     useState<CropAspectRatio>("free");
   const cropInitialized = useRef(false);
+  // Normalized crop coords (0–1 fractions of image at scale=1)
+  const cropNormRef = useRef({ l: 0, t: 0, r: 1, b: 1 });
+  // Ref for breaking declaration-order dependency
+  const zoomToCropFn = useRef<() => void>(() => {});
 
   // Shared value for crop aspect ratio (0 = free, otherwise w/h ratio)
   const cropRatioSV = useSharedValue(0);
@@ -162,9 +166,12 @@ export default function ImageEditorScreen() {
     return { width: fitW, height: fitH };
   }, [imageSize, viewportSize, isRotated90, freeRotation]);
 
-  // Visual footprint after rotation (at scale=1)
-  const visualW = isRotated90 ? imageRenderSize.height : imageRenderSize.width;
-  const visualH = isRotated90 ? imageRenderSize.width : imageRenderSize.height;
+  // Visual footprint after CSS rotation (at scale=1) — the bounding box
+  const totalRad = Math.abs((totalRotation * Math.PI) / 180);
+  const cosR = Math.abs(Math.cos(totalRad));
+  const sinR = Math.abs(Math.sin(totalRad));
+  const visualW = imageRenderSize.width * cosR + imageRenderSize.height * sinR;
+  const visualH = imageRenderSize.width * sinR + imageRenderSize.height * cosR;
 
   // One-time crop init when viewport + image are first ready
   useEffect(() => {
@@ -261,17 +268,26 @@ export default function ImageEditorScreen() {
       clampTranslation();
     });
 
-  const doubleTapGesture = Gesture.Tap()
-    .enabled(mode === "move")
-    .numberOfTaps(2)
-    .maxDuration(250)
-    .onEnd(() => {
+  const handleDoubleTap = useCallback(() => {
+    if (hasCropped) {
+      // Re-zoom to crop area
+      zoomToCropFn.current();
+    } else {
       scale.value = withTiming(1, { duration: 250 });
       translateX.value = withTiming(0, { duration: 250 });
       translateY.value = withTiming(0, { duration: 250 });
       savedScale.value = 1;
       savedTX.value = 0;
       savedTY.value = 0;
+    }
+  }, [hasCropped]);
+
+  const doubleTapGesture = Gesture.Tap()
+    .enabled(mode === "move")
+    .numberOfTaps(2)
+    .maxDuration(250)
+    .onEnd(() => {
+      runOnJS(handleDoubleTap)();
     });
 
   const imageGesture = Gesture.Simultaneous(
@@ -300,7 +316,20 @@ export default function ImageEditorScreen() {
   );
 
   // --- CROP HANDLE GESTURES (only in crop mode) ---
-  const markCropped = useCallback(() => setHasCropped(true), []);
+  // Receives pre-computed normalized crop coords from worklet
+  const updateCropNorm = useCallback(
+    (nl: number, nt: number, nr: number, nb: number) => {
+      setHasCropped(true);
+      cropNormRef.current = { l: nl, t: nt, r: nr, b: nb };
+      console.log("[ImageEditor] cropNorm updated:", {
+        l: nl.toFixed(3),
+        t: nt.toFixed(3),
+        r: nr.toFixed(3),
+        b: nb.toFixed(3),
+      });
+    },
+    [],
+  );
 
   const makeCropGesture = (corner: "tl" | "tr" | "bl" | "br") => {
     return Gesture.Pan()
@@ -415,7 +444,21 @@ export default function ImageEditorScreen() {
         }
       })
       .onEnd(() => {
-        runOnJS(markCropped)();
+        // Compute normalized crop coords on UI thread (guaranteed correct values)
+        const s = scale.value;
+        const vpCX = viewportSize.width / 2;
+        const vpCY = viewportSize.height / 2;
+        const tx = translateX.value;
+        const ty = translateY.value;
+        const imgL = vpCX - (visualW * s) / 2 + tx;
+        const imgT = vpCY - (visualH * s) / 2 + ty;
+        const imgW = visualW * s;
+        const imgH = visualH * s;
+        const nl = (cropL.value - imgL) / imgW;
+        const nt = (cropT.value - imgT) / imgH;
+        const nr = (cropR.value - imgL) / imgW;
+        const nb = (cropB.value - imgT) / imgH;
+        runOnJS(updateCropNorm)(nl, nt, nr, nb);
       });
   };
 
@@ -484,7 +527,21 @@ export default function ImageEditorScreen() {
           cropB.value = newT + cropH;
         })
         .onEnd(() => {
-          runOnJS(markCropped)();
+          // Compute normalized crop coords on UI thread
+          const s = scale.value;
+          const vpCX = viewportSize.width / 2;
+          const vpCY = viewportSize.height / 2;
+          const tx = translateX.value;
+          const ty = translateY.value;
+          const imgL = vpCX - (visualW * s) / 2 + tx;
+          const imgT = vpCY - (visualH * s) / 2 + ty;
+          const imgW = visualW * s;
+          const imgH = visualH * s;
+          const nl = (cropL.value - imgL) / imgW;
+          const nt = (cropT.value - imgT) / imgH;
+          const nr = (cropR.value - imgL) / imgW;
+          const nb = (cropB.value - imgT) / imgH;
+          runOnJS(updateCropNorm)(nl, nt, nr, nb);
         }),
     [viewportSize, visualW, visualH],
   );
@@ -545,15 +602,17 @@ export default function ImageEditorScreen() {
     height: cropB.value - cropT.value,
   }));
 
-  // Corner handle positions
+  // Corner handle positions — placed inward so they're fully visible
   const handlePos = (corner: "tl" | "tr" | "bl" | "br") =>
     useAnimatedStyle(() => {
-      const x = corner[1] === "l" ? cropL.value : cropR.value;
-      const y = corner[0] === "t" ? cropT.value : cropB.value;
+      const isLeft = corner[1] === "l";
+      const isTop = corner[0] === "t";
+      const x = isLeft ? cropL.value : cropR.value - HANDLE_SIZE;
+      const y = isTop ? cropT.value : cropB.value - HANDLE_SIZE;
       return {
         position: "absolute" as const,
-        left: x - HANDLE_SIZE / 2,
-        top: y - HANDLE_SIZE / 2,
+        left: x,
+        top: y,
         width: HANDLE_SIZE,
         height: HANDLE_SIZE,
         zIndex: 20,
@@ -585,6 +644,11 @@ export default function ImageEditorScreen() {
   });
 
   // Dynamic image outline — tracks pan/zoom transforms
+  const outlineColor =
+    bgColor === "white" ? "rgba(0,0,0,0.35)" : "rgba(255,255,255,0.35)";
+  const dashedOutlineColor =
+    bgColor === "white" ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.5)";
+
   const imageOutlineStyle = useAnimatedStyle(() => {
     const s = scale.value;
     const vpCX = viewportSize.width / 2;
@@ -596,7 +660,7 @@ export default function ImageEditorScreen() {
       left: vpCX - (visualW * s) / 2 + translateX.value,
       top: vpCY - (visualH * s) / 2 + translateY.value,
       borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.35)",
+      borderColor: outlineColor,
       zIndex: 5,
     };
   });
@@ -626,6 +690,75 @@ export default function ImageEditorScreen() {
     cropT.value = Math.max(0, imgT);
     cropR.value = Math.min(viewportSize.width, imgR);
     cropB.value = Math.min(viewportSize.height, imgB);
+    // Reset normalized to full image
+    cropNormRef.current = { l: 0, t: 0, r: 1, b: 1 };
+  }, [viewportSize, visualW, visualH]);
+
+  // Zoom so cropped area fills the viewport (non-destructive)
+  // Derives entirely from cropNormRef — works from any state
+  const zoomToCropArea = useCallback(() => {
+    const n = cropNormRef.current;
+    const normW = n.r - n.l;
+    const normH = n.b - n.t;
+    if (normW <= 0 || normH <= 0) return;
+
+    const vpW = viewportSize.width;
+    const vpH = viewportSize.height;
+    const vpCX = vpW / 2;
+    const vpCY = vpH / 2;
+
+    // Scale needed to fill viewport with crop area (8% padding)
+    const newScale =
+      Math.min(vpW / (normW * visualW), vpH / (normH * visualH)) * 0.92;
+    const clampedScale = Math.min(Math.max(newScale, MIN_SCALE), MAX_SCALE);
+
+    // Translate to center crop in viewport
+    const normCX = (n.l + n.r) / 2;
+    const normCY = (n.t + n.b) / 2;
+    const newTX = visualW * clampedScale * (0.5 - normCX);
+    const newTY = visualH * clampedScale * (0.5 - normCY);
+
+    const dur = { duration: 300 };
+    scale.value = withTiming(clampedScale, dur);
+    savedScale.value = clampedScale;
+    translateX.value = withTiming(newTX, dur);
+    translateY.value = withTiming(newTY, dur);
+    savedTX.value = newTX;
+    savedTY.value = newTY;
+
+    // Update crop rect to match new transform
+    const imgL = vpCX - (visualW * clampedScale) / 2 + newTX;
+    const imgT = vpCY - (visualH * clampedScale) / 2 + newTY;
+    const imgW = visualW * clampedScale;
+    const imgH = visualH * clampedScale;
+    cropL.value = withTiming(imgL + n.l * imgW, dur);
+    cropT.value = withTiming(imgT + n.t * imgH, dur);
+    cropR.value = withTiming(imgL + n.r * imgW, dur);
+    cropB.value = withTiming(imgT + n.b * imgH, dur);
+  }, [viewportSize, visualW, visualH]);
+  // Keep ref in sync for forward references
+  zoomToCropFn.current = zoomToCropArea;
+
+  // Reset to full image view, restoring crop rect from normalized coords
+  const resetToFullImage = useCallback(() => {
+    const dur = { duration: 300 };
+    scale.value = withTiming(1, dur);
+    savedScale.value = 1;
+    translateX.value = withTiming(0, dur);
+    translateY.value = withTiming(0, dur);
+    savedTX.value = 0;
+    savedTY.value = 0;
+
+    // Restore crop rect from normalized coords at scale=1, translate=0
+    const vpCX = viewportSize.width / 2;
+    const vpCY = viewportSize.height / 2;
+    const imgL = vpCX - visualW / 2;
+    const imgT = vpCY - visualH / 2;
+    const n = cropNormRef.current;
+    cropL.value = withTiming(imgL + n.l * visualW, dur);
+    cropT.value = withTiming(imgT + n.t * visualH, dur);
+    cropR.value = withTiming(imgL + n.r * visualW, dur);
+    cropB.value = withTiming(imgT + n.b * visualH, dur);
   }, [viewportSize, visualW, visualH]);
 
   const handleRotateLeft = useCallback(() => {
@@ -697,6 +830,17 @@ export default function ImageEditorScreen() {
       cropR.value = newL + newW;
       cropB.value = newT + newH;
       setHasCropped(true);
+      // Save normalized coords
+      const rawImgL = vpCX - (visualW * s) / 2 + tx;
+      const rawImgT = vpCY - (visualH * s) / 2 + ty;
+      const rawImgW = visualW * s;
+      const rawImgH = visualH * s;
+      cropNormRef.current = {
+        l: (newL - rawImgL) / rawImgW,
+        t: (newT - rawImgT) / rawImgH,
+        r: (newL + newW - rawImgL) / rawImgW,
+        b: (newT + newH - rawImgT) / rawImgH,
+      };
     },
     [viewportSize, visualW, visualH],
   );
@@ -704,8 +848,16 @@ export default function ImageEditorScreen() {
   const toggleMode = useCallback(
     (m: EditorMode) => {
       if (mode === m) {
+        // Switching back to move mode
         setMode("move");
+        if (hasCropped) {
+          zoomToCropArea();
+        }
       } else {
+        // Entering crop or rotate mode — reset to full image view
+        if (hasCropped) {
+          resetToFullImage();
+        }
         setMode(m);
         if (m === "crop" && !hasCropped) {
           initCropToBounds();
@@ -717,7 +869,15 @@ export default function ImageEditorScreen() {
         }
       }
     },
-    [mode, hasCropped, initCropToBounds, cropAspectRatio, applyCropAspectRatio],
+    [
+      mode,
+      hasCropped,
+      initCropToBounds,
+      cropAspectRatio,
+      applyCropAspectRatio,
+      zoomToCropArea,
+      resetToFullImage,
+    ],
   );
 
   const handleAspectRatioChange = useCallback(
@@ -739,113 +899,86 @@ export default function ImageEditorScreen() {
     [applyCropAspectRatio, initCropToBounds],
   );
 
-  // Build ImageManipulator actions from current state
-  const buildActions = useCallback(() => {
-    const currentScale = scale.value;
-    const currentTX = translateX.value;
-    const currentTY = translateY.value;
-    const cl = cropL.value;
-    const ct = cropT.value;
-    const cr = cropR.value;
-    const cb = cropB.value;
-
-    const actions: ImageManipulator.Action[] = [];
-
-    const totalRot = rotation90 + freeRotation;
-    if (totalRot !== 0) {
-      actions.push({ rotate: totalRot });
-    }
-    if (flipH) {
-      actions.push({ flip: ImageManipulator.FlipType.Horizontal });
-    }
-    if (flipV) {
-      actions.push({ flip: ImageManipulator.FlipType.Vertical });
-    }
-
-    const postRotW = isRotated90 ? imageSize.height : imageSize.width;
-    const postRotH = isRotated90 ? imageSize.width : imageSize.height;
-    const pixPerPxX = postRotW / visualW;
-    const pixPerPxY = postRotH / visualH;
-    const vpCX = viewportSize.width / 2;
-    const vpCY = viewportSize.height / 2;
-    const imgL = vpCX - (visualW * currentScale) / 2 + currentTX;
-    const imgT = vpCY - (visualH * currentScale) / 2 + currentTY;
-    const imgR = imgL + visualW * currentScale;
-    const imgB = imgT + visualH * currentScale;
-
-    const useCustomCrop =
-      Math.abs(cl - imgL) > 2 ||
-      Math.abs(ct - imgT) > 2 ||
-      Math.abs(cr - imgR) > 2 ||
-      Math.abs(cb - imgB) > 2;
-
-    if (useCustomCrop) {
-      const cropLRel = (cl - imgL) / currentScale;
-      const cropTRel = (ct - imgT) / currentScale;
-      const cropWRel = (cr - cl) / currentScale;
-      const cropHRel = (cb - ct) / currentScale;
-
-      let originX = Math.round(cropLRel * pixPerPxX);
-      let originY = Math.round(cropTRel * pixPerPxY);
-      let cropW = Math.round(cropWRel * pixPerPxX);
-      let cropH = Math.round(cropHRel * pixPerPxY);
-
-      originX = Math.max(0, Math.min(originX, postRotW - 1));
-      originY = Math.max(0, Math.min(originY, postRotH - 1));
-      cropW = Math.min(cropW, postRotW - originX);
-      cropH = Math.min(cropH, postRotH - originY);
-
-      if (cropW > 10 && cropH > 10) {
-        actions.push({
-          crop: { originX, originY, width: cropW, height: cropH },
-        });
-      }
-    }
-
-    return actions;
-  }, [
-    rotation90,
-    freeRotation,
-    flipH,
-    flipV,
-    isRotated90,
-    visualW,
-    visualH,
-    viewportSize,
-    imageSize,
-    scale,
-    translateX,
-    translateY,
-    cropL,
-    cropT,
-    cropR,
-    cropB,
-  ]);
-
-  const handleCancel = useCallback(() => {
-    cancelImageEditor();
-    navigation.goBack();
-  }, [navigation]);
-
+  // Save the edited image — two-step: rotate/flip first to get real dims, then crop
   const handleDone = useCallback(async () => {
     if (processing || !imageSize.width || !imageSize.height) return;
     setProcessing(true);
 
     try {
-      const actions = buildActions();
+      let currentUri = imageUri;
 
-      if (actions.length === 0) {
-        resolveImageEditor(imageUri);
-        navigation.goBack();
-        return;
+      // Step 1: Apply rotation and flips
+      const rotFlipActions: ImageManipulator.Action[] = [];
+      const totalRot = rotation90 + freeRotation;
+      if (totalRot !== 0) {
+        rotFlipActions.push({ rotate: totalRot });
+      }
+      if (flipH) {
+        rotFlipActions.push({ flip: ImageManipulator.FlipType.Horizontal });
+      }
+      if (flipV) {
+        rotFlipActions.push({ flip: ImageManipulator.FlipType.Vertical });
       }
 
-      const result = await ImageManipulator.manipulateAsync(imageUri, actions, {
-        compress: 0.8,
-        format: ImageManipulator.SaveFormat.JPEG,
-      });
+      let realW = imageSize.width;
+      let realH = imageSize.height;
 
-      resolveImageEditor(result.uri);
+      if (rotFlipActions.length > 0) {
+        const step1 = await ImageManipulator.manipulateAsync(
+          imageUri,
+          rotFlipActions,
+          { compress: 0.95, format: ImageManipulator.SaveFormat.JPEG },
+        );
+        currentUri = step1.uri;
+        realW = step1.width;
+        realH = step1.height;
+      }
+
+      // Step 2: Crop using normalized coords on REAL post-rotation dimensions
+      if (hasCropped) {
+        const n = cropNormRef.current;
+        const isFullImage =
+          n.l < 0.01 && n.t < 0.01 && n.r > 0.99 && n.b > 0.99;
+
+        if (!isFullImage) {
+          let originX = Math.round(n.l * realW);
+          let originY = Math.round(n.t * realH);
+          let cropW = Math.round((n.r - n.l) * realW);
+          let cropH = Math.round((n.b - n.t) * realH);
+
+          originX = Math.max(0, Math.min(originX, realW - 1));
+          originY = Math.max(0, Math.min(originY, realH - 1));
+          cropW = Math.min(cropW, realW - originX);
+          cropH = Math.min(cropH, realH - originY);
+
+          console.log("[ImageEditor] Save debug:", {
+            realW,
+            realH,
+            norm: n,
+            crop: { originX, originY, cropW, cropH },
+          });
+
+          if (cropW > 10 && cropH > 10) {
+            const step2 = await ImageManipulator.manipulateAsync(
+              currentUri,
+              [{ crop: { originX, originY, width: cropW, height: cropH } }],
+              { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
+            );
+            currentUri = step2.uri;
+          }
+        }
+      }
+
+      // If only rot/flip (no crop), re-compress to final quality
+      if (currentUri !== imageUri && !hasCropped) {
+        const final = await ImageManipulator.manipulateAsync(currentUri, [], {
+          compress: 0.8,
+          format: ImageManipulator.SaveFormat.JPEG,
+        });
+        currentUri = final.uri;
+      }
+
+      resolveImageEditor(currentUri === imageUri ? imageUri : currentUri);
       navigation.goBack();
     } catch (err) {
       console.error("Image editor error:", err);
@@ -854,14 +987,29 @@ export default function ImageEditorScreen() {
     } finally {
       setProcessing(false);
     }
-  }, [processing, imageSize, imageUri, buildActions, navigation]);
+  }, [
+    processing,
+    imageSize,
+    imageUri,
+    navigation,
+    rotation90,
+    freeRotation,
+    flipH,
+    flipV,
+    hasCropped,
+  ]);
+
+  const handleCancel = useCallback(() => {
+    cancelImageEditor();
+    navigation.goBack();
+  }, [navigation]);
 
   const ready =
     imageRenderSize.width > 0 &&
     imageRenderSize.height > 0 &&
     viewportSize.width > 0;
 
-  // Corner visual mark
+  // Corner visual mark — positioned at the outer edge (crop corner)
   const cornerMark = (corner: "tl" | "tr" | "bl" | "br") => {
     const sz = 18;
     const bw = 3;
@@ -874,12 +1022,8 @@ export default function ImageEditorScreen() {
           width: sz,
           height: sz,
           borderColor: "#fff",
-          ...(isTop
-            ? { top: (HANDLE_SIZE - sz) / 2 }
-            : { bottom: (HANDLE_SIZE - sz) / 2 }),
-          ...(isLeft
-            ? { left: (HANDLE_SIZE - sz) / 2 }
-            : { right: (HANDLE_SIZE - sz) / 2 }),
+          ...(isTop ? { top: 0 } : { bottom: 0 }),
+          ...(isLeft ? { left: 0 } : { right: 0 }),
           ...(isTop && isLeft && { borderTopWidth: bw, borderLeftWidth: bw }),
           ...(isTop && !isLeft && { borderTopWidth: bw, borderRightWidth: bw }),
           ...(!isTop &&
@@ -961,7 +1105,7 @@ export default function ImageEditorScreen() {
                             position: "absolute" as const,
                             zIndex: 5,
                             borderWidth: 1.5,
-                            borderColor: "rgba(255,255,255,0.5)",
+                            borderColor: dashedOutlineColor,
                             borderStyle: "dashed",
                           },
                           cropBorderStyle,
