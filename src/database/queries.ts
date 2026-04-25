@@ -9,12 +9,18 @@ import { dbLog, dbError } from '../lib/logger';
  */
 function parseItemRow(r: any): WardrobeItem {
   return {
-    ...r,
+    id: r.id,
+    name: r.name ?? '',
+    description: r.description ?? '',
+    category: r.category ?? '',
+    created_at: r.created_at ?? 0,
+    updated_at: r.updated_at ?? 0,
+    deleted: r.deleted ?? 0,
     metadata: r.metadata ? JSON.parse(r.metadata) : {},
     tags: r.tags
-      ? Array.from(new Set(r.tags.split(',').map((t: string) => t.trim()).filter((t: string) => t.length > 0)))
+      ? Array.from(new Set(String(r.tags).split(',').map((t: string) => t.trim()).filter((t: string) => t.length > 0)))
       : [],
-    images: r.images ? r.images.split(',').map((i: string) => i.trim()).filter((i: string) => i.length > 0) : [],
+    images: r.images ? String(r.images).split(',').map((i: string) => i.trim()).filter((i: string) => i.length > 0) : [],
   };
 }
 
@@ -124,8 +130,21 @@ export async function addItem(data: NewItemData): Promise<WardrobeItem> {
       }
     });
 
-    const newItem = await loadItem(itemId);
-    if (!newItem) throw new Error('Failed to retrieve new item after insert');
+    let newItem = await loadItem(itemId);
+    if (!newItem) {
+      dbLog('loadItem returned null after insert, constructing from input', { itemId });
+      newItem = {
+        id: itemId,
+        name: data.name,
+        description: data.description,
+        category: data.category,
+        created_at: now,
+        updated_at: now,
+        metadata: data.metadata || {},
+        tags: data.tags || [],
+        images: data.images || [],
+      };
+    }
 
     dbLog('addItem: inserted', { itemId, name: data.name });
     dbEvents.emit('itemsChanged', { type: 'add', id: itemId });

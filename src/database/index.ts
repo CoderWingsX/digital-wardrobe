@@ -45,6 +45,27 @@ export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
     
     migrationResult = await migrateDatabase(db);
     
+    // Always recreate the items_full view to repair any corruption
+    // left by other branches or failed migrations
+    await db.execAsync(`
+      DROP VIEW IF EXISTS items_full;
+
+      CREATE VIEW items_full AS
+      SELECT 
+        i.id, i.name, i.category, i.description, i.created_at, i.updated_at,
+        m.attributes AS metadata,
+        GROUP_CONCAT(DISTINCT t.name) AS tags,
+        GROUP_CONCAT(DISTINCT ii.local_uri) AS images
+      FROM items i
+      LEFT JOIN metadata m ON m.item_id = i.id AND m.deleted = 0
+      LEFT JOIN item_tags it ON it.item_id = i.id AND it.deleted = 0
+      LEFT JOIN tags t ON t.id = it.tag_id AND t.deleted = 0
+      LEFT JOIN item_images ii ON ii.item_id = i.id AND ii.deleted = 0
+      WHERE i.deleted = 0
+      GROUP BY i.id
+      ORDER BY i.updated_at DESC;
+    `);
+
     dbEvents.emit('migrationComplete', migrationResult);
     dbLog(`Database initialized (schema v${CURRENT_SCHEMA_VERSION})`);
     

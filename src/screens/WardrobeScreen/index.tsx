@@ -250,7 +250,7 @@ export default function WardrobeScreen() {
                                 style={styles.list}
                                 contentContainerStyle={styles.listContent}
                                 data={displayItems}
-                                keyExtractor={(item) => item.id.toString()}
+                                keyExtractor={(item) => String(item.id)}
                                 scrollEnabled={!showSuggestions}
                                 keyboardShouldPersistTaps="handled"
                                 indicatorStyle={isDark ? 'white' : 'black'}
