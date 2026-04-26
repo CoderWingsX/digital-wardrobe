@@ -49,3 +49,10 @@ ggaergegr.tsx
 gpt.ts
 jest.config.cjs
 __tests__
+
+# Python / ai-service
+__pycache__/
+*.pyc
+ai-service/.env
+ai-service/venv/
+ai-service/.venv/

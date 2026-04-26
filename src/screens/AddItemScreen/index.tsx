@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDatabase } from '../../contexts/DatabaseContext';
@@ -27,6 +28,7 @@ import MetadataInput from '../../components/MetadataInput';
 import StyledButton from '../../components/StyledButton';
 import { createStyles } from './styles';
 import { useUnsavedChangesWarning } from '../../hooks/useUnsavedChangesWarning';
+import { analyzeClothingImage } from '../../lib/aiService';
 
 type AddItemScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -90,6 +92,7 @@ export default function AddItemScreen() {
   const [images, setImages] = useState<string[]>(savedState.images);
   const [multiAdd, setMultiAdd] = useState(false);
   const [isTagInputFocused, setIsTagInputFocused] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // Detect if form has unsaved changes by comparing to saved state
   const hasUnsavedChanges = useMemo(() => {
@@ -129,6 +132,61 @@ export default function AddItemScreen() {
   const removeImage = (idx: number) => {
     setImages(images.filter((_, i) => i !== idx));
   };
+
+  async function handleAIAutofill() {
+    if (images.length === 0) return;
+
+    setIsAnalyzing(true);
+    try {
+      // Use the first image for analysis
+      const result = await analyzeClothingImage(images[0]);
+
+      // Only fill empty fields to preserve user input
+      if (!name) setName(result.name || '');
+      if (!description) setDescription(result.description || '');
+      if (!category) setCategory(result.category || '');
+
+      // Merge AI metadata into existing metadata fields
+      if (result.metadata) {
+        setMetadata((prev) => {
+          const updated = [...prev];
+          for (const [key, value] of Object.entries(result.metadata)) {
+            const existingIdx = updated.findIndex(
+              (m) => m.key.toLowerCase() === key.toLowerCase()
+            );
+            if (existingIdx >= 0) {
+              // Only fill if the existing value is empty
+              if (!updated[existingIdx].value.trim()) {
+                updated[existingIdx] = { key: updated[existingIdx].key, value: String(value) };
+              }
+            } else if (value) {
+              // Add new metadata field from AI
+              updated.push({ key, value: String(value) });
+            }
+          }
+          return updated;
+        });
+      }
+
+      // Merge AI tags (add ones that don't already exist)
+      if (result.tags && result.tags.length > 0) {
+        setTags((prev) => {
+          const existing = new Set(prev.map((t) => t.toLowerCase()));
+          const newTags = result.tags.filter((t) => !existing.has(t.toLowerCase()));
+          return [...prev, ...newTags];
+        });
+      }
+
+      Alert.alert('✨ AI Autofill', 'Fields have been populated — review and adjust as needed!');
+    } catch (error: any) {
+      Alert.alert(
+        'AI Autofill Failed',
+        error.message || 'Could not analyze the image. Please try again.'
+      );
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }
 
   async function handleAddItem() {
     if (!name || !category) {
@@ -301,6 +359,42 @@ export default function AddItemScreen() {
             ))}
           </ScrollView>
           <ImagePickerButton onImageSelected={(uri) => setImages([...images, uri])} />
+
+          {images.length > 0 && (
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: isAnalyzing ? colors.surface : colors.primary + '15',
+                borderWidth: 1,
+                borderColor: colors.primary + '40',
+                borderRadius: 10,
+                paddingVertical: 12,
+                paddingHorizontal: 20,
+                marginTop: 8,
+                opacity: isAnalyzing ? 0.7 : 1,
+              }}
+              onPress={handleAIAutofill}
+              disabled={isAnalyzing}
+              activeOpacity={0.7}
+            >
+              {isAnalyzing ? (
+                <ActivityIndicator size="small" color={colors.primary} style={{ marginRight: 8 }} />
+              ) : (
+                <Text style={{ fontSize: 18, marginRight: 8 }}>✨</Text>
+              )}
+              <Text
+                style={{
+                  color: colors.primary,
+                  fontSize: 15,
+                  fontWeight: '600',
+                }}
+              >
+                {isAnalyzing ? 'Analyzing...' : 'AI Autofill'}
+              </Text>
+            </TouchableOpacity>
+          )}
 
           <TagInput
             tags={tags}
