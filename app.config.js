@@ -59,5 +59,9 @@ export default ({ config }) => ({
   },
   updates: {
     enabled: false,
+    url: process.env.EAS_UPDATES_URL,
+    requestHeaders: {
+      "expo-channel-name": "preview",
+    },
   },
 });
