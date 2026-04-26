@@ -200,4 +200,26 @@ export const styles = StyleSheet.create({
   aspectRatioChipTextActive: {
     color: "#4A90D9",
   },
+  confirmBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+  },
+  confirmButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  confirmButtonCancel: {
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+  },
+  confirmButtonApply: {
+    backgroundColor: "rgba(74, 144, 217, 0.5)",
+    borderWidth: 1,
+    borderColor: "#4A90D9",
+  },
 });

@@ -79,6 +79,12 @@ export default function ImageEditorScreen() {
   // Viewport height when pending zoom was requested (to detect layout change)
   const pendingZoomVpRef = useRef(0);
 
+  // Snapshot refs — store pre-edit state for discard
+  const prevCropNorm = useRef({ l: 0, t: 0, r: 1, b: 1 });
+  const prevHasCropped = useRef(false);
+  const prevRotation90 = useRef(0);
+  const prevFreeRotation = useRef(0);
+
   // Shared value for crop aspect ratio (0 = free, otherwise w/h ratio)
   const cropRatioSV = useSharedValue(0);
   // Shared values for normalized crop coords (for outline animation)
@@ -909,66 +915,102 @@ export default function ImageEditorScreen() {
     [viewportSize, visualW, visualH],
   );
 
+  // --- Apply / Discard helpers for crop and rotate ---
+  const applyCrop = useCallback(() => {
+    if (hasCropped) {
+      pendingZoomRef.current = true;
+      pendingZoomVpRef.current = viewportSize.height;
+    }
+    setMode("move");
+  }, [hasCropped, viewportSize]);
+
+  const discardCrop = useCallback(() => {
+    // Restore snapshot
+    const prev = prevCropNorm.current;
+    cropNormRef.current = { ...prev };
+    cropNormL.value = prev.l;
+    cropNormT.value = prev.t;
+    cropNormR.value = prev.r;
+    cropNormB.value = prev.b;
+    setHasCropped(prevHasCropped.current);
+
+    // Restore crop rect at scale=1
+    const vpCX = viewportSize.width / 2;
+    const vpCY = viewportSize.height / 2;
+    const imgL = vpCX - visualW / 2;
+    const imgT = vpCY - visualH / 2;
+    cropL.value = imgL + prev.l * visualW;
+    cropT.value = imgT + prev.t * visualH;
+    cropR.value = imgL + prev.r * visualW;
+    cropB.value = imgT + prev.b * visualH;
+
+    // If previous state had a crop, zoom to it after viewport settles
+    if (prevHasCropped.current) {
+      pendingZoomRef.current = true;
+      pendingZoomVpRef.current = viewportSize.height;
+    }
+    setMode("move");
+  }, [viewportSize, visualW, visualH]);
+
+  const applyRotate = useCallback(() => {
+    setMode("move");
+  }, []);
+
+  const discardRotate = useCallback(() => {
+    setRotation90(prevRotation90.current);
+    setFreeRotation(prevFreeRotation.current);
+    rotSlider.value = prevFreeRotation.current;
+    setMode("move");
+  }, []);
+
   const toggleMode = useCallback(
     (m: EditorMode) => {
       if (mode === m) {
-        // Switching back to move mode
-        if (hasCropped) {
-          // Log crop box coords before switching
-          const s = scale.value;
-          const vpCX = viewportSize.width / 2;
-          const vpCY = viewportSize.height / 2;
-          const tx = translateX.value;
-          const ty = translateY.value;
-          console.log("[ImageEditor] crop→move switch:", {
-            cropBox: {
-              l: cropL.value.toFixed(1),
-              t: cropT.value.toFixed(1),
-              r: cropR.value.toFixed(1),
-              b: cropB.value.toFixed(1),
-            },
-            norm: {
-              l: cropNormRef.current.l.toFixed(4),
-              t: cropNormRef.current.t.toFixed(4),
-              r: cropNormRef.current.r.toFixed(4),
-              b: cropNormRef.current.b.toFixed(4),
-            },
-            viewport: { w: viewportSize.width, h: viewportSize.height },
-            visualWH: { w: visualW.toFixed(1), h: visualH.toFixed(1) },
-            transform: {
-              s: s.toFixed(2),
-              tx: tx.toFixed(1),
-              ty: ty.toFixed(1),
-            },
-          });
-          // Defer zoom until viewport settles (aspect ratio row disappears)
-          pendingZoomRef.current = true;
-          pendingZoomVpRef.current = viewportSize.height;
+        // Clicking the same mode button again — discard changes
+        if (m === "crop") {
+          discardCrop();
+        } else if (m === "rotate") {
+          discardRotate();
         }
-        setMode("move");
       } else {
-        // Entering crop or rotate mode — reset to full image view
-        if (hasCropped) {
-          resetToFullImage();
-        }
-        setMode(m);
-        if (m === "crop" && !hasCropped) {
-          initCropToBounds();
-          // Apply current aspect ratio to the fresh crop rect
-          const entry = ASPECT_RATIOS.find((a) => a.value === cropAspectRatio);
-          if (entry?.ratio) {
-            setTimeout(() => applyCropAspectRatio(entry.ratio), 0);
+        // Entering crop or rotate mode — snapshot state and reset view
+        if (m === "crop") {
+          prevCropNorm.current = { ...cropNormRef.current };
+          prevHasCropped.current = hasCropped;
+          if (hasCropped) {
+            resetToFullImage();
           }
+          setMode(m);
+          if (!hasCropped) {
+            initCropToBounds();
+            const entry = ASPECT_RATIOS.find(
+              (a) => a.value === cropAspectRatio,
+            );
+            if (entry?.ratio) {
+              setTimeout(() => applyCropAspectRatio(entry.ratio), 0);
+            }
+          }
+        } else if (m === "rotate") {
+          prevRotation90.current = rotation90;
+          prevFreeRotation.current = freeRotation;
+          if (hasCropped) {
+            resetToFullImage();
+          }
+          setMode(m);
         }
       }
     },
     [
       mode,
       hasCropped,
+      rotation90,
+      freeRotation,
       initCropToBounds,
       cropAspectRatio,
       applyCropAspectRatio,
       resetToFullImage,
+      discardCrop,
+      discardRotate,
     ],
   );
 
@@ -1380,81 +1422,99 @@ export default function ImageEditorScreen() {
 
         {/* Bottom Toolbar */}
         <View style={styles.bottomBar}>
-          <View style={styles.toolRow}>
-            <TouchableOpacity
-              style={[
-                styles.toolButton,
-                mode === "crop" && styles.toolButtonActive,
-              ]}
-              onPress={() => toggleMode("crop")}
-            >
-              <Ionicons
-                name="crop-outline"
-                size={24}
-                color={mode === "crop" ? "#4A90D9" : "#fff"}
-              />
-              <Text
-                style={[
-                  styles.toolButtonText,
-                  mode === "crop" && styles.toolButtonTextActive,
-                ]}
+          {mode === "move" ? (
+            <View style={styles.toolRow}>
+              <TouchableOpacity
+                style={styles.toolButton}
+                onPress={() => toggleMode("crop")}
               >
-                Crop
-              </Text>
-            </TouchableOpacity>
+                <Ionicons name="crop-outline" size={24} color="#fff" />
+                <Text style={styles.toolButtonText}>Crop</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[
-                styles.toolButton,
-                mode === "rotate" && styles.toolButtonActive,
-              ]}
-              onPress={() => toggleMode("rotate")}
-            >
-              <Ionicons
-                name="sync-outline"
-                size={24}
-                color={mode === "rotate" ? "#4A90D9" : "#fff"}
-              />
-              <Text
-                style={[
-                  styles.toolButtonText,
-                  mode === "rotate" && styles.toolButtonTextActive,
-                ]}
+              <TouchableOpacity
+                style={styles.toolButton}
+                onPress={() => toggleMode("rotate")}
               >
-                Rotate
-              </Text>
-            </TouchableOpacity>
+                <Ionicons name="sync-outline" size={24} color="#fff" />
+                <Text style={styles.toolButtonText}>Rotate</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.toolButton}
-              onPress={handleRotateLeft}
-            >
-              <Ionicons name="return-up-back-outline" size={24} color="#fff" />
-              <Text style={styles.toolButtonText}>90° L</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.toolButton}
+                onPress={handleRotateLeft}
+              >
+                <Ionicons
+                  name="return-up-back-outline"
+                  size={24}
+                  color="#fff"
+                />
+                <Text style={styles.toolButtonText}>90° L</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.toolButton}
-              onPress={handleRotateRight}
-            >
-              <Ionicons
-                name="return-up-forward-outline"
-                size={24}
-                color="#fff"
-              />
-              <Text style={styles.toolButtonText}>90° R</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.toolButton}
+                onPress={handleRotateRight}
+              >
+                <Ionicons
+                  name="return-up-forward-outline"
+                  size={24}
+                  color="#fff"
+                />
+                <Text style={styles.toolButtonText}>90° R</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity style={styles.toolButton} onPress={handleFlipH}>
-              <Ionicons name="swap-horizontal-outline" size={24} color="#fff" />
-              <Text style={styles.toolButtonText}>Flip H</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.toolButton}
+                onPress={handleFlipH}
+              >
+                <Ionicons
+                  name="swap-horizontal-outline"
+                  size={24}
+                  color="#fff"
+                />
+                <Text style={styles.toolButtonText}>Flip H</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity style={styles.toolButton} onPress={handleFlipV}>
-              <Ionicons name="swap-vertical-outline" size={24} color="#fff" />
-              <Text style={styles.toolButtonText}>Flip V</Text>
-            </TouchableOpacity>
-          </View>
+              <TouchableOpacity
+                style={styles.toolButton}
+                onPress={handleFlipV}
+              >
+                <Ionicons
+                  name="swap-vertical-outline"
+                  size={24}
+                  color="#fff"
+                />
+                <Text style={styles.toolButtonText}>Flip V</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.confirmBar}>
+              <TouchableOpacity
+                style={[
+                  styles.confirmButton,
+                  styles.confirmButtonCancel,
+                ]}
+                onPress={
+                  mode === "crop" ? discardCrop : discardRotate
+                }
+              >
+                <Ionicons name="close" size={28} color="#fff" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.confirmButton,
+                  styles.confirmButtonApply,
+                ]}
+                onPress={
+                  mode === "crop" ? applyCrop : applyRotate
+                }
+              >
+                <Ionicons name="checkmark" size={28} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </SafeAreaView>
     </View>
