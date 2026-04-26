@@ -38,15 +38,23 @@ type EditorMode = "move" | "crop" | "rotate";
 const MIN_SCALE = 1;
 const MAX_SCALE = 5;
 const MIN_CROP_SIZE = 50;
-const HANDLE_SIZE = 44;
+const HANDLE_SIZE = 56;
 
-type CropAspectRatio = "free" | "1:1" | "4:3" | "3:4" | "16:9" | "9:16";
-const ASPECT_RATIOS: {
+type CropAspectRatio =
+  | "free"
+  | "full"
+  | "1:1"
+  | "4:3"
+  | "3:4"
+  | "16:9"
+  | "9:16";
+const STATIC_ASPECT_RATIOS: {
   label: string;
   value: CropAspectRatio;
   ratio: number | null;
 }[] = [
   { label: "Free", value: "free", ratio: null },
+  { label: "Full", value: "full", ratio: null }, // ratio filled at runtime from image dims
   { label: "1:1", value: "1:1", ratio: 1 },
   { label: "4:3", value: "4:3", ratio: 4 / 3 },
   { label: "3:4", value: "3:4", ratio: 3 / 4 },
@@ -61,6 +69,18 @@ export default function ImageEditorScreen() {
 
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
+
+  // Compute ASPECT_RATIOS with "Full" filled from actual image dimensions
+  const ASPECT_RATIOS = useMemo(() => {
+    const fullRatio =
+      imageSize.width && imageSize.height
+        ? imageSize.width / imageSize.height
+        : null;
+    return STATIC_ASPECT_RATIOS.map((ar) =>
+      ar.value === "full" ? { ...ar, ratio: fullRatio } : ar,
+    );
+  }, [imageSize]);
+
   const [rotation90, setRotation90] = useState(0); // 90-degree increments
   const [freeRotation, setFreeRotation] = useState(0); // degrees, -45 to 45
   const [flipH, setFlipH] = useState(false);
@@ -604,17 +624,17 @@ export default function ImageEditorScreen() {
     height: cropB.value - cropT.value,
   }));
 
-  // Corner handle positions — placed inward so they're fully visible
+  // Corner handle positions — centered on crop corners for easy grabbing
   const handlePos = (corner: "tl" | "tr" | "bl" | "br") =>
     useAnimatedStyle(() => {
       const isLeft = corner[1] === "l";
       const isTop = corner[0] === "t";
-      const x = isLeft ? cropL.value : cropR.value - HANDLE_SIZE;
-      const y = isTop ? cropT.value : cropB.value - HANDLE_SIZE;
+      const cx = isLeft ? cropL.value : cropR.value;
+      const cy = isTop ? cropT.value : cropB.value;
       return {
         position: "absolute" as const,
-        left: x,
-        top: y,
+        left: cx - HANDLE_SIZE / 2,
+        top: cy - HANDLE_SIZE / 2,
         width: HANDLE_SIZE,
         height: HANDLE_SIZE,
         zIndex: 20,
@@ -1162,12 +1182,14 @@ export default function ImageEditorScreen() {
     imageRenderSize.height > 0 &&
     viewportSize.width > 0;
 
-  // Corner visual mark — positioned at the outer edge (crop corner)
+  // Corner visual mark — centered on the crop corner point (center of the handle)
   const cornerMark = (corner: "tl" | "tr" | "bl" | "br") => {
-    const sz = 18;
+    const sz = 20;
     const bw = 3;
     const isTop = corner[0] === "t";
     const isLeft = corner[1] === "l";
+    // Position the bracket so its outer corner aligns with the center of the handle
+    const offset = (HANDLE_SIZE - sz) / 2;
     return (
       <View
         style={{
@@ -1175,8 +1197,10 @@ export default function ImageEditorScreen() {
           width: sz,
           height: sz,
           borderColor: "#fff",
-          ...(isTop ? { top: 0 } : { bottom: 0 }),
-          ...(isLeft ? { left: 0 } : { right: 0 }),
+          top: isTop ? offset : undefined,
+          bottom: !isTop ? offset : undefined,
+          left: isLeft ? offset : undefined,
+          right: !isLeft ? offset : undefined,
           ...(isTop && isLeft && { borderTopWidth: bw, borderLeftWidth: bw }),
           ...(isTop && !isLeft && { borderTopWidth: bw, borderRightWidth: bw }),
           ...(!isTop &&
@@ -1464,10 +1488,7 @@ export default function ImageEditorScreen() {
                 <Text style={styles.toolButtonText}>90° R</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.toolButton}
-                onPress={handleFlipH}
-              >
+              <TouchableOpacity style={styles.toolButton} onPress={handleFlipH}>
                 <Ionicons
                   name="swap-horizontal-outline"
                   size={24}
@@ -1476,40 +1497,23 @@ export default function ImageEditorScreen() {
                 <Text style={styles.toolButtonText}>Flip H</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.toolButton}
-                onPress={handleFlipV}
-              >
-                <Ionicons
-                  name="swap-vertical-outline"
-                  size={24}
-                  color="#fff"
-                />
+              <TouchableOpacity style={styles.toolButton} onPress={handleFlipV}>
+                <Ionicons name="swap-vertical-outline" size={24} color="#fff" />
                 <Text style={styles.toolButtonText}>Flip V</Text>
               </TouchableOpacity>
             </View>
           ) : (
             <View style={styles.confirmBar}>
               <TouchableOpacity
-                style={[
-                  styles.confirmButton,
-                  styles.confirmButtonCancel,
-                ]}
-                onPress={
-                  mode === "crop" ? discardCrop : discardRotate
-                }
+                style={[styles.confirmButton, styles.confirmButtonCancel]}
+                onPress={mode === "crop" ? discardCrop : discardRotate}
               >
                 <Ionicons name="close" size={28} color="#fff" />
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[
-                  styles.confirmButton,
-                  styles.confirmButtonApply,
-                ]}
-                onPress={
-                  mode === "crop" ? applyCrop : applyRotate
-                }
+                style={[styles.confirmButton, styles.confirmButtonApply]}
+                onPress={mode === "crop" ? applyCrop : applyRotate}
               >
                 <Ionicons name="checkmark" size={28} color="#fff" />
               </TouchableOpacity>
