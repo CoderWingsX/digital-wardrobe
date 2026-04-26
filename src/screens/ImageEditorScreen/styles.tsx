@@ -1,0 +1,225 @@
+import { StyleSheet } from "react-native";
+
+export const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#000",
+  },
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  topBarButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    minWidth: 70,
+  },
+  topBarButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  doneButtonText: {
+    color: "#4A90D9",
+    fontSize: 16,
+    fontWeight: "700",
+    textAlign: "right",
+  },
+  topBarTitle: {
+    color: "#fff",
+    fontSize: 17,
+    fontWeight: "600",
+  },
+  viewport: {
+    flex: 1,
+    overflow: "hidden",
+  },
+  imageContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  overlayContainer: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  overlayTop: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.55)",
+  },
+  overlayBottom: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.55)",
+  },
+  overlayLeft: {
+    position: "absolute",
+    left: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.55)",
+  },
+  overlayRight: {
+    position: "absolute",
+    right: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.55)",
+  },
+  cropBorder: {
+    position: "absolute",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.8)",
+  },
+  gridLineH: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+  },
+  gridLineV: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    width: StyleSheet.hairlineWidth,
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+  },
+  bottomBar: {
+    paddingHorizontal: 8,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  toolRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-evenly",
+    flexWrap: "wrap",
+    gap: 6,
+    paddingHorizontal: 4,
+  },
+  toolButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+  },
+  toolButtonActive: {
+    backgroundColor: "rgba(74, 144, 217, 0.4)",
+    borderWidth: 1,
+    borderColor: "#4A90D9",
+  },
+  toolButtonText: {
+    color: "#ccc",
+    fontSize: 10,
+    marginTop: 3,
+  },
+  toolButtonTextActive: {
+    color: "#4A90D9",
+  },
+  modeHint: {
+    color: "rgba(255,255,255,0.45)",
+    fontSize: 12,
+    textAlign: "center",
+    paddingBottom: 6,
+    paddingTop: 2,
+  },
+  // Rotation slider
+  rotateSliderContainer: {
+    height: 48,
+    marginHorizontal: 24,
+    marginBottom: 8,
+    justifyContent: "center",
+  },
+  rotateSliderTrack: {
+    height: 2,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 1,
+  },
+  rotateSliderFill: {
+    position: "absolute",
+    height: 2,
+    backgroundColor: "#4A90D9",
+    borderRadius: 1,
+    left: "50%",
+  },
+  rotateSliderThumb: {
+    position: "absolute",
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#fff",
+    top: -11,
+  },
+  rotateSliderLabel: {
+    color: "#fff",
+    fontSize: 13,
+    textAlign: "center",
+    marginBottom: 4,
+    fontVariant: ["tabular-nums"],
+  },
+  rotateSliderTicks: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginHorizontal: 24,
+    marginTop: 2,
+  },
+  rotateSliderTick: {
+    color: "rgba(255,255,255,0.3)",
+    fontSize: 10,
+  },
+  aspectRatioRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 6,
+  },
+  aspectRatioChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.1)",
+  },
+  aspectRatioChipActive: {
+    backgroundColor: "rgba(74, 144, 217, 0.4)",
+    borderWidth: 1,
+    borderColor: "#4A90D9",
+  },
+  aspectRatioChipText: {
+    color: "#ccc",
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  aspectRatioChipTextActive: {
+    color: "#4A90D9",
+  },
+  confirmBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+  },
+  confirmButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  confirmButtonCancel: {
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+  },
+  confirmButtonApply: {
+    backgroundColor: "rgba(74, 144, 217, 0.5)",
+    borderWidth: 1,
+    borderColor: "#4A90D9",
+  },
+});
