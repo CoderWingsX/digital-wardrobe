@@ -21,21 +21,21 @@ Complete guide for developing and extending the Digital Wardrobe app.
 
 ### Required Software
 
-| Software | Version | Purpose |
-|----------|---------|---------|
-| Node.js | 18+ | JavaScript runtime |
-| npm | 9+ | Package manager |
-| Expo CLI | Latest | Development tools |
-| Git | Latest | Version control |
+| Software | Version | Purpose            |
+| -------- | ------- | ------------------ |
+| Node.js  | 18+     | JavaScript runtime |
+| npm      | 9+      | Package manager    |
+| Expo CLI | Latest  | Development tools  |
+| Git      | Latest  | Version control    |
 
 ### Optional Tools
 
-| Tool | Purpose |
-|------|---------|
-| VS Code | Recommended IDE |
-| Android Studio | Android emulator |
-| Xcode | iOS simulator (macOS only) |
-| Expo Go | Run on physical device |
+| Tool           | Purpose                    |
+| -------------- | -------------------------- |
+| VS Code        | Recommended IDE            |
+| Android Studio | Android emulator           |
+| Xcode          | iOS simulator (macOS only) |
+| Expo Go        | Run on physical device     |
 
 ### Installation
 
@@ -284,12 +284,12 @@ extra: {
 
 ### File Naming
 
-| Type | Convention | Example |
-|------|------------|---------|
-| Components | PascalCase | `CustomDialog.tsx` |
-| Screens | PascalCase/folder | `HomeScreen/index.tsx` |
-| Utilities | camelCase | `filesystem.ts` |
-| Types | PascalCase | `WardrobeItem` |
+| Type       | Convention        | Example                |
+| ---------- | ----------------- | ---------------------- |
+| Components | PascalCase        | `CustomDialog.tsx`     |
+| Screens    | PascalCase/folder | `HomeScreen/index.tsx` |
+| Utilities  | camelCase         | `filesystem.ts`        |
+| Types      | PascalCase        | `WardrobeItem`         |
 
 ### Component Structure
 
@@ -327,11 +327,12 @@ export default function MyComponent({ title }: Props) {
 }
 
 // 4. Styles (dynamic)
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
-  container: {
-    backgroundColor: colors.background,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      backgroundColor: colors.background,
+    },
+  });
 ```
 
 ### Database Operations
@@ -355,6 +356,7 @@ await addItem(data); // UI won't update immediately
 ### Adding a New Screen
 
 1. **Create screen folder:**
+
 ```
 src/screens/NewScreen/
 ├── index.tsx
@@ -362,6 +364,7 @@ src/screens/NewScreen/
 ```
 
 2. **Add to navigation types:**
+
 ```typescript
 // src/types/index.ts
 export type RootStackParamList = {
@@ -371,15 +374,12 @@ export type RootStackParamList = {
 ```
 
 3. **Add to navigator:**
+
 ```tsx
 // src/navigation/AppNavigator.tsx
 import NewScreen from '../screens/NewScreen';
 
-<Stack.Screen
-  name="NewScreen"
-  component={NewScreen}
-  options={{ title: 'New Screen' }}
-/>
+<Stack.Screen name="NewScreen" component={NewScreen} options={{ title: 'New Screen' }} />;
 ```
 
 ### Adding a Database Column
@@ -425,6 +425,7 @@ npm test
 ### Expo DevTools
 
 Press in terminal:
+
 - `j` - Open debugger
 - `r` - Reload app
 - `m` - Toggle menu
@@ -437,6 +438,7 @@ Press in terminal:
 ### Database Debugging
 
 Enable logging in development:
+
 ```typescript
 // src/lib/logger.ts
 // Logs prefixed with [db] and [ui] in development mode
@@ -444,12 +446,12 @@ Enable logging in development:
 
 ### Common Issues
 
-| Issue | Solution |
-|-------|----------|
-| Metro bundler error | `npx expo start --clear` |
-| Module not found | `rm -rf node_modules && npm install` |
-| Build failed | Check `eas.json` configuration |
-| SQLite error | Check migration version |
+| Issue               | Solution                             |
+| ------------------- | ------------------------------------ |
+| Metro bundler error | `npx expo start --clear`             |
+| Module not found    | `rm -rf node_modules && npm install` |
+| Build failed        | Check `eas.json` configuration       |
+| SQLite error        | Check migration version              |
 
 ---
 

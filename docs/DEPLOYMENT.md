@@ -38,6 +38,7 @@ eas init
 ### Current Build Profiles
 
 **eas.json:**
+
 ```json
 {
   "build": {
@@ -55,11 +56,11 @@ eas init
 }
 ```
 
-| Profile | Use Case |
-|---------|----------|
+| Profile       | Use Case                    |
+| ------------- | --------------------------- |
 | `development` | Dev client with debug tools |
-| `preview` | Testing (recommended) |
-| `production` | Release-ready build |
+| `preview`     | Testing (recommended)       |
+| `production`  | Release-ready build         |
 
 ---
 
@@ -149,6 +150,6 @@ eas update --branch preview --message "Bug fix"
 # Check builds
 eas build:list
 
-# Check updates  
+# Check updates
 eas update:list
 ```

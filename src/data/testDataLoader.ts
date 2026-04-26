@@ -23,7 +23,7 @@ async function downloadImage(url: string, filename: string): Promise<string | nu
   try {
     await FileSystem.makeDirectoryAsync(IMAGE_DIR, { intermediates: true });
     const localPath = `${IMAGE_DIR}${filename}`;
-    
+
     const downloadResult = await FileSystem.downloadAsync(url, localPath);
     if (downloadResult.status === 200) {
       return localPath;
@@ -51,18 +51,20 @@ function getRandomItems<T>(arr: T[], count: number): T[] {
  */
 export async function loadTestData(
   count?: number,
-  downloadImages: boolean = true
+  downloadImages: boolean = true,
 ): Promise<{ loaded: number; failed: number }> {
   const items = testData.items as TestItem[];
-  const itemsToLoad = count ? getRandomItems(items, count) : getRandomItems(items, Math.ceil(items.length / 2));
-  
+  const itemsToLoad = count
+    ? getRandomItems(items, count)
+    : getRandomItems(items, Math.ceil(items.length / 2));
+
   let loaded = 0;
   let failed = 0;
 
   for (const item of itemsToLoad) {
     try {
       let images: string[] = [];
-      
+
       if (downloadImages && item.imageUrl) {
         const filename = `test_${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
         const localPath = await downloadImage(item.imageUrl, filename);
@@ -79,7 +81,7 @@ export async function loadTestData(
         tags: item.tags,
         images,
       });
-      
+
       loaded++;
     } catch (error) {
       console.error(`Failed to load item "${item.name}":`, error);
@@ -96,7 +98,7 @@ export async function loadTestData(
 export async function unloadTestData(): Promise<{ removed: number }> {
   const allItems = await loadItems();
   const testItems = allItems.filter(
-    item => item.tags.includes(TEST_DATA_TAG) || item.metadata?.testData === 'true'
+    (item) => item.tags.includes(TEST_DATA_TAG) || item.metadata?.testData === 'true',
   );
 
   let removed = 0;
@@ -110,11 +112,11 @@ export async function unloadTestData(): Promise<{ removed: number }> {
           if (info.exists) {
             await FileSystem.deleteAsync(imagePath);
           }
-        } catch (e) {
+        } catch {
           console.warn('Failed to delete image:', imagePath);
         }
       }
-      
+
       await deleteItem(item.id);
       removed++;
     } catch (error) {
@@ -131,7 +133,7 @@ export async function unloadTestData(): Promise<{ removed: number }> {
 export async function getTestDataCount(): Promise<number> {
   const allItems = await loadItems();
   return allItems.filter(
-    item => item.tags.includes(TEST_DATA_TAG) || item.metadata?.testData === 'true'
+    (item) => item.tags.includes(TEST_DATA_TAG) || item.metadata?.testData === 'true',
   ).length;
 }
 
@@ -140,7 +142,7 @@ export async function getTestDataCount(): Promise<number> {
  */
 export function getAvailableTestData(): { total: number; categories: string[] } {
   const items = testData.items as TestItem[];
-  const categories = [...new Set(items.map(i => i.category))];
+  const categories = [...new Set(items.map((i) => i.category))];
   return {
     total: items.length,
     categories,

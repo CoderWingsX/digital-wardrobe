@@ -6,7 +6,8 @@ import { dbLog, dbError } from '../lib/logger';
 
 let db: SQLite.SQLiteDatabase | null = null;
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
-let migrationResult: { fromVersion: number; toVersion: number; migrationsRun: number } | null = null;
+let migrationResult: { fromVersion: number; toVersion: number; migrationsRun: number } | null =
+  null;
 
 // Lightweight event emitter for DB layer
 type DBEvent = 'dbReady' | 'itemsChanged' | 'migrationStart' | 'migrationComplete';
@@ -38,13 +39,13 @@ export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
   try {
     dbLog('Opening database...');
     db = await SQLite.openDatabaseAsync('wardrobe.db');
-    
+
     // Run migrations
     dbLog('Running migrations...');
     dbEvents.emit('migrationStart');
-    
+
     migrationResult = await migrateDatabase(db);
-    
+
     // Always recreate the items_full view to repair any corruption
     // left by other branches or failed migrations
     await db.execAsync(`
@@ -68,11 +69,13 @@ export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
 
     dbEvents.emit('migrationComplete', migrationResult);
     dbLog(`Database initialized (schema v${CURRENT_SCHEMA_VERSION})`);
-    
+
     if (migrationResult.migrationsRun > 0) {
-      dbLog(`Ran ${migrationResult.migrationsRun} migration(s): v${migrationResult.fromVersion} -> v${migrationResult.toVersion}`);
+      dbLog(
+        `Ran ${migrationResult.migrationsRun} migration(s): v${migrationResult.fromVersion} -> v${migrationResult.toVersion}`,
+      );
     }
-    
+
     dbEvents.emit('dbReady');
     return db;
   } catch (err: unknown) {

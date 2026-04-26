@@ -13,10 +13,10 @@ interface Props {
   };
 }
 
-export default function LoadingScreen({ 
-  message = 'Loading...', 
+export default function LoadingScreen({
+  message = 'Loading...',
   showMigration = false,
-  migrationInfo 
+  migrationInfo,
 }: Props) {
   const { colors } = useTheme();
 
@@ -24,7 +24,7 @@ export default function LoadingScreen({
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ActivityIndicator size="large" color={colors.primary} />
       <Text style={[styles.message, { color: colors.textSecondary }]}>{message}</Text>
-      
+
       {showMigration && migrationInfo && (
         <View style={[styles.migrationInfo, { backgroundColor: colors.surface }]}>
           <Text style={[styles.migrationText, { color: colors.textMuted }]}>

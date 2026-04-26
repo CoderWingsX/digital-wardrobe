@@ -1,65 +1,43 @@
-import React, {
-  useState,
-  useCallback,
-  useMemo,
-  useEffect,
-  useRef,
-} from "react";
-import {
-  View,
-  Text,
-  Image,
-  TouchableOpacity,
-  StatusBar,
-  LayoutChangeEvent,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
+/* eslint-disable react-hooks/exhaustive-deps, react-hooks/rules-of-hooks */
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { View, Text, Image, TouchableOpacity, StatusBar, LayoutChangeEvent } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
   clamp,
   runOnJS,
-} from "react-native-reanimated";
-import * as ImageManipulator from "expo-image-manipulator";
-import { RootStackParamList } from "../../types";
-import {
-  resolveImageEditor,
-  cancelImageEditor,
-} from "../../lib/imageEditorBridge";
-import { styles } from "./styles";
+} from 'react-native-reanimated';
+import * as ImageManipulator from 'expo-image-manipulator';
+import { RootStackParamList } from '../../types';
+import { resolveImageEditor, cancelImageEditor } from '../../lib/imageEditorBridge';
+import { styles } from './styles';
 
-type ImageEditorRouteProp = RouteProp<RootStackParamList, "ImageEditor">;
-type EditorMode = "move" | "crop" | "rotate";
+type ImageEditorRouteProp = RouteProp<RootStackParamList, 'ImageEditor'>;
+type EditorMode = 'move' | 'crop' | 'rotate';
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 5;
 const MIN_CROP_SIZE = 50;
 const HANDLE_SIZE = 56;
 
-type CropAspectRatio =
-  | "free"
-  | "full"
-  | "1:1"
-  | "4:3"
-  | "3:4"
-  | "16:9"
-  | "9:16";
+type CropAspectRatio = 'free' | 'full' | '1:1' | '4:3' | '3:4' | '16:9' | '9:16';
 const STATIC_ASPECT_RATIOS: {
   label: string;
   value: CropAspectRatio;
   ratio: number | null;
 }[] = [
-  { label: "Free", value: "free", ratio: null },
-  { label: "Full", value: "full", ratio: null }, // ratio filled at runtime from image dims
-  { label: "1:1", value: "1:1", ratio: 1 },
-  { label: "4:3", value: "4:3", ratio: 4 / 3 },
-  { label: "3:4", value: "3:4", ratio: 3 / 4 },
-  { label: "16:9", value: "16:9", ratio: 16 / 9 },
-  { label: "9:16", value: "9:16", ratio: 9 / 16 },
+  { label: 'Free', value: 'free', ratio: null },
+  { label: 'Full', value: 'full', ratio: null }, // ratio filled at runtime from image dims
+  { label: '1:1', value: '1:1', ratio: 1 },
+  { label: '4:3', value: '4:3', ratio: 4 / 3 },
+  { label: '3:4', value: '3:4', ratio: 3 / 4 },
+  { label: '16:9', value: '16:9', ratio: 16 / 9 },
+  { label: '9:16', value: '9:16', ratio: 9 / 16 },
 ];
 
 export default function ImageEditorScreen() {
@@ -73,11 +51,9 @@ export default function ImageEditorScreen() {
   // Compute ASPECT_RATIOS with "Full" filled from actual image dimensions
   const ASPECT_RATIOS = useMemo(() => {
     const fullRatio =
-      imageSize.width && imageSize.height
-        ? imageSize.width / imageSize.height
-        : null;
+      imageSize.width && imageSize.height ? imageSize.width / imageSize.height : null;
     return STATIC_ASPECT_RATIOS.map((ar) =>
-      ar.value === "full" ? { ...ar, ratio: fullRatio } : ar,
+      ar.value === 'full' ? { ...ar, ratio: fullRatio } : ar,
     );
   }, [imageSize]);
 
@@ -86,11 +62,10 @@ export default function ImageEditorScreen() {
   const [flipH, setFlipH] = useState(false);
   const [flipV, setFlipV] = useState(false);
   const [processing, setProcessing] = useState(false);
-  const [mode, setMode] = useState<EditorMode>("move");
-  const [bgColor, setBgColor] = useState<"black" | "white">("black");
+  const [mode, setMode] = useState<EditorMode>('move');
+  const [bgColor, setBgColor] = useState<'black' | 'white'>('black');
   const [hasCropped, setHasCropped] = useState(false);
-  const [cropAspectRatio, setCropAspectRatio] =
-    useState<CropAspectRatio>("free");
+  const [cropAspectRatio, setCropAspectRatio] = useState<CropAspectRatio>('free');
   const cropInitialized = useRef(false);
   // Normalized crop coords (0–1 fractions of image at scale=1)
   const cropNormRef = useRef({ l: 0, t: 0, r: 1, b: 1 });
@@ -140,7 +115,7 @@ export default function ImageEditorScreen() {
     Image.getSize(
       imageUri,
       (w, h) => setImageSize({ width: w, height: h }),
-      () => console.error("Failed to get image size"),
+      () => console.error('Failed to get image size'),
     );
   }, [imageUri]);
 
@@ -156,12 +131,7 @@ export default function ImageEditorScreen() {
 
   // Fitted image size at scale=1, accounting for rotation bounding box
   const imageRenderSize = useMemo(() => {
-    if (
-      !imageSize.width ||
-      !imageSize.height ||
-      !viewportSize.width ||
-      !viewportSize.height
-    ) {
+    if (!imageSize.width || !imageSize.height || !viewportSize.width || !viewportSize.height) {
       return { width: 0, height: 0 };
     }
     const vpW = viewportSize.width;
@@ -227,7 +197,7 @@ export default function ImageEditorScreen() {
 
   // --- CLAMPING (rubber-band) ---
   const clampTranslation = () => {
-    "worklet";
+    'worklet';
     const s = scale.value;
     const imgW = visualW * s;
     const imgH = visualH * s;
@@ -254,15 +224,12 @@ export default function ImageEditorScreen() {
 
   // --- IMAGE GESTURES (only in move mode) ---
   const pinchGesture = Gesture.Pinch()
-    .enabled(mode === "move")
+    .enabled(mode === 'move')
     .onStart(() => {
       savedScale.value = scale.value;
     })
     .onUpdate((e) => {
-      scale.value = Math.min(
-        MAX_SCALE,
-        Math.max(0.5, savedScale.value * e.scale),
-      );
+      scale.value = Math.min(MAX_SCALE, Math.max(0.5, savedScale.value * e.scale));
     })
     .onEnd(() => {
       if (scale.value < MIN_SCALE) {
@@ -275,7 +242,7 @@ export default function ImageEditorScreen() {
     });
 
   const panGesture = Gesture.Pan()
-    .enabled(mode === "move")
+    .enabled(mode === 'move')
     .minPointers(1)
     .maxPointers(2)
     .onStart(() => {
@@ -291,10 +258,10 @@ export default function ImageEditorScreen() {
     });
 
   const doubleTapGesture = Gesture.Tap()
-    .enabled(mode === "move")
+    .enabled(mode === 'move')
     .numberOfTaps(2)
     .onEnd(() => {
-      "worklet";
+      'worklet';
       scale.value = withTiming(1, { duration: 250 });
       translateX.value = withTiming(0, { duration: 250 });
       translateY.value = withTiming(0, { duration: 250 });
@@ -303,11 +270,7 @@ export default function ImageEditorScreen() {
       savedTY.value = 0;
     });
 
-  const imageGesture = Gesture.Simultaneous(
-    panGesture,
-    pinchGesture,
-    doubleTapGesture,
-  );
+  const imageGesture = Gesture.Simultaneous(panGesture, pinchGesture, doubleTapGesture);
 
   const animatedImageStyle = useAnimatedStyle(() => ({
     transform: [
@@ -330,30 +293,27 @@ export default function ImageEditorScreen() {
 
   // --- CROP HANDLE GESTURES (only in crop mode) ---
   // Receives pre-computed normalized crop coords from worklet
-  const updateCropNorm = useCallback(
-    (nl: number, nt: number, nr: number, nb: number) => {
-      // Clamp to valid [0,1] range
-      nl = Math.max(0, Math.min(1, nl));
-      nt = Math.max(0, Math.min(1, nt));
-      nr = Math.max(0, Math.min(1, nr));
-      nb = Math.max(0, Math.min(1, nb));
-      setHasCropped(true);
-      cropNormRef.current = { l: nl, t: nt, r: nr, b: nb };
-      cropNormL.value = nl;
-      cropNormT.value = nt;
-      cropNormR.value = nr;
-      cropNormB.value = nb;
-      console.log("[ImageEditor] cropNorm updated:", {
-        l: nl.toFixed(3),
-        t: nt.toFixed(3),
-        r: nr.toFixed(3),
-        b: nb.toFixed(3),
-      });
-    },
-    [],
-  );
+  const updateCropNorm = useCallback((nl: number, nt: number, nr: number, nb: number) => {
+    // Clamp to valid [0,1] range
+    nl = Math.max(0, Math.min(1, nl));
+    nt = Math.max(0, Math.min(1, nt));
+    nr = Math.max(0, Math.min(1, nr));
+    nb = Math.max(0, Math.min(1, nb));
+    setHasCropped(true);
+    cropNormRef.current = { l: nl, t: nt, r: nr, b: nb };
+    cropNormL.value = nl;
+    cropNormT.value = nt;
+    cropNormR.value = nr;
+    cropNormB.value = nb;
+    console.log('[ImageEditor] cropNorm updated:', {
+      l: nl.toFixed(3),
+      t: nt.toFixed(3),
+      r: nr.toFixed(3),
+      b: nb.toFixed(3),
+    });
+  }, []);
 
-  const makeCropGesture = (corner: "tl" | "tr" | "bl" | "br") => {
+  const makeCropGesture = (corner: 'tl' | 'tr' | 'bl' | 'br') => {
     return Gesture.Pan()
       .onStart(() => {
         savedCL.value = cropL.value;
@@ -369,68 +329,40 @@ export default function ImageEditorScreen() {
         const tx = translateX.value;
         const ty = translateY.value;
         const imgL = Math.max(0, vpCX - (visualW * s) / 2 + tx);
-        const imgR = Math.min(
-          viewportSize.width,
-          vpCX + (visualW * s) / 2 + tx,
-        );
+        const imgR = Math.min(viewportSize.width, vpCX + (visualW * s) / 2 + tx);
         const imgT = Math.max(0, vpCY - (visualH * s) / 2 + ty);
-        const imgB = Math.min(
-          viewportSize.height,
-          vpCY + (visualH * s) / 2 + ty,
-        );
+        const imgB = Math.min(viewportSize.height, vpCY + (visualH * s) / 2 + ty);
         const ratio = cropRatioSV.value; // 0 = free
 
         if (ratio === 0) {
           // Free mode — independent edges
-          if (corner === "tl" || corner === "bl") {
-            cropL.value = clamp(
-              savedCL.value + e.translationX,
-              imgL,
-              cropR.value - MIN_CROP_SIZE,
-            );
+          if (corner === 'tl' || corner === 'bl') {
+            cropL.value = clamp(savedCL.value + e.translationX, imgL, cropR.value - MIN_CROP_SIZE);
           }
-          if (corner === "tr" || corner === "br") {
-            cropR.value = clamp(
-              savedCR.value + e.translationX,
-              cropL.value + MIN_CROP_SIZE,
-              imgR,
-            );
+          if (corner === 'tr' || corner === 'br') {
+            cropR.value = clamp(savedCR.value + e.translationX, cropL.value + MIN_CROP_SIZE, imgR);
           }
-          if (corner === "tl" || corner === "tr") {
-            cropT.value = clamp(
-              savedCT.value + e.translationY,
-              imgT,
-              cropB.value - MIN_CROP_SIZE,
-            );
+          if (corner === 'tl' || corner === 'tr') {
+            cropT.value = clamp(savedCT.value + e.translationY, imgT, cropB.value - MIN_CROP_SIZE);
           }
-          if (corner === "bl" || corner === "br") {
-            cropB.value = clamp(
-              savedCB.value + e.translationY,
-              cropT.value + MIN_CROP_SIZE,
-              imgB,
-            );
+          if (corner === 'bl' || corner === 'br') {
+            cropB.value = clamp(savedCB.value + e.translationY, cropT.value + MIN_CROP_SIZE, imgB);
           }
         } else {
           // Locked ratio — opposite corner is anchor, dragged corner moves both axes
           // Use the larger drag delta to determine new width, derive height from ratio
           const dx = e.translationX;
           const dy = e.translationY;
-          const anchorX =
-            corner === "tl" || corner === "bl" ? savedCR.value : savedCL.value;
-          const anchorY =
-            corner === "tl" || corner === "tr" ? savedCB.value : savedCT.value;
-          const signX = corner === "tr" || corner === "br" ? 1 : -1;
-          const signY = corner === "bl" || corner === "br" ? 1 : -1;
+          const anchorX = corner === 'tl' || corner === 'bl' ? savedCR.value : savedCL.value;
+          const anchorY = corner === 'tl' || corner === 'tr' ? savedCB.value : savedCT.value;
+          const signX = corner === 'tr' || corner === 'br' ? 1 : -1;
+          const signY = corner === 'bl' || corner === 'br' ? 1 : -1;
 
           // Proposed new edge positions
           const proposedEdgeX =
-            corner === "tl" || corner === "bl"
-              ? savedCL.value + dx
-              : savedCR.value + dx;
+            corner === 'tl' || corner === 'bl' ? savedCL.value + dx : savedCR.value + dx;
           const proposedEdgeY =
-            corner === "tl" || corner === "tr"
-              ? savedCT.value + dy
-              : savedCB.value + dy;
+            corner === 'tl' || corner === 'tr' ? savedCT.value + dy : savedCB.value + dy;
 
           // Proposed widths from each axis
           const wFromX = Math.abs(proposedEdgeX - anchorX);
@@ -484,22 +416,10 @@ export default function ImageEditorScreen() {
       });
   };
 
-  const tlGesture = useMemo(
-    () => makeCropGesture("tl"),
-    [viewportSize, visualW, visualH],
-  );
-  const trGesture = useMemo(
-    () => makeCropGesture("tr"),
-    [viewportSize, visualW, visualH],
-  );
-  const blGesture = useMemo(
-    () => makeCropGesture("bl"),
-    [viewportSize, visualW, visualH],
-  );
-  const brGesture = useMemo(
-    () => makeCropGesture("br"),
-    [viewportSize, visualW, visualH],
-  );
+  const tlGesture = useMemo(() => makeCropGesture('tl'), [viewportSize, visualW, visualH]);
+  const trGesture = useMemo(() => makeCropGesture('tr'), [viewportSize, visualW, visualH]);
+  const blGesture = useMemo(() => makeCropGesture('bl'), [viewportSize, visualW, visualH]);
+  const brGesture = useMemo(() => makeCropGesture('br'), [viewportSize, visualW, visualH]);
 
   // --- CROP BOX MOVE GESTURE (drag entire crop box) ---
   // Track previous frame position to use delta-based movement (avoids edge overshoot)
@@ -530,15 +450,9 @@ export default function ImageEditorScreen() {
           const tx = translateX.value;
           const ty = translateY.value;
           const imgL = Math.max(0, vpCX - (visualW * s) / 2 + tx);
-          const imgR = Math.min(
-            viewportSize.width,
-            vpCX + (visualW * s) / 2 + tx,
-          );
+          const imgR = Math.min(viewportSize.width, vpCX + (visualW * s) / 2 + tx);
           const imgT = Math.max(0, vpCY - (visualH * s) / 2 + ty);
-          const imgB = Math.min(
-            viewportSize.height,
-            vpCY + (visualH * s) / 2 + ty,
-          );
+          const imgB = Math.min(viewportSize.height, vpCY + (visualH * s) / 2 + ty);
 
           const newL = clamp(cropL.value + dx, imgL, imgR - cropW);
           const newT = clamp(cropT.value + dy, imgT, imgB - cropH);
@@ -570,7 +484,7 @@ export default function ImageEditorScreen() {
 
   // Crop box move area style
   const cropMoveAreaStyle = useAnimatedStyle(() => ({
-    position: "absolute" as const,
+    position: 'absolute' as const,
     left: cropL.value,
     top: cropT.value,
     width: cropR.value - cropL.value,
@@ -591,11 +505,7 @@ export default function ImageEditorScreen() {
       if (rotSliderWidth <= 0) return;
       // Map slider width to -45..+45 degrees
       const degreesPerPx = 90 / rotSliderWidth;
-      const newVal = clamp(
-        savedRotSlider.value + e.translationX * degreesPerPx,
-        -45,
-        45,
-      );
+      const newVal = clamp(savedRotSlider.value + e.translationX * degreesPerPx, -45, 45);
       rotSlider.value = newVal;
       runOnJS(updateFreeRotation)(newVal);
     });
@@ -625,14 +535,14 @@ export default function ImageEditorScreen() {
   }));
 
   // Corner handle positions — centered on crop corners for easy grabbing
-  const handlePos = (corner: "tl" | "tr" | "bl" | "br") =>
+  const handlePos = (corner: 'tl' | 'tr' | 'bl' | 'br') =>
     useAnimatedStyle(() => {
-      const isLeft = corner[1] === "l";
-      const isTop = corner[0] === "t";
+      const isLeft = corner[1] === 'l';
+      const isTop = corner[0] === 't';
       const cx = isLeft ? cropL.value : cropR.value;
       const cy = isTop ? cropT.value : cropB.value;
       return {
-        position: "absolute" as const,
+        position: 'absolute' as const,
         left: cx - HANDLE_SIZE / 2,
         top: cy - HANDLE_SIZE / 2,
         width: HANDLE_SIZE,
@@ -641,10 +551,10 @@ export default function ImageEditorScreen() {
       };
     });
 
-  const tlPos = handlePos("tl");
-  const trPos = handlePos("tr");
-  const blPos = handlePos("bl");
-  const brPos = handlePos("br");
+  const tlPos = handlePos('tl');
+  const trPos = handlePos('tr');
+  const blPos = handlePos('bl');
+  const brPos = handlePos('br');
 
   // Rotation slider animated thumb
   const rotThumbStyle = useAnimatedStyle(() => {
@@ -656,7 +566,7 @@ export default function ImageEditorScreen() {
   });
 
   const rotFillStyle = useAnimatedStyle(() => {
-    if (rotSliderWidth <= 0) return { width: 0, left: "50%" };
+    if (rotSliderWidth <= 0) return { width: 0, left: '50%' };
     const center = rotSliderWidth / 2;
     const pos = ((rotSlider.value + 45) / 90) * rotSliderWidth;
     return {
@@ -666,17 +576,15 @@ export default function ImageEditorScreen() {
   });
 
   // Dynamic image outline — tracks pan/zoom transforms
-  const outlineColor =
-    bgColor === "white" ? "rgba(0,0,0,0.35)" : "rgba(255,255,255,0.35)";
-  const dashedOutlineColor =
-    bgColor === "white" ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.5)";
+  const outlineColor = bgColor === 'white' ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.35)';
+  const dashedOutlineColor = bgColor === 'white' ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.5)';
 
   const imageOutlineStyle = useAnimatedStyle(() => {
     const s = scale.value;
     const vpCX = viewportSize.width / 2;
     const vpCY = viewportSize.height / 2;
     return {
-      position: "absolute" as const,
+      position: 'absolute' as const,
       width: visualW * s,
       height: visualH * s,
       left: vpCX - (visualW * s) / 2 + translateX.value,
@@ -699,7 +607,7 @@ export default function ImageEditorScreen() {
     const imgW = visualW * s;
     const imgH = visualH * s;
     return {
-      position: "absolute" as const,
+      position: 'absolute' as const,
       left: imgL + cropNormL.value * imgW,
       top: imgT + cropNormT.value * imgH,
       width: (cropNormR.value - cropNormL.value) * imgW,
@@ -755,8 +663,7 @@ export default function ImageEditorScreen() {
     const vpCY = vpH / 2;
 
     // Scale needed to fill viewport with crop area (8% padding for visual clarity)
-    const newScale =
-      Math.min(vpW / (normW * visualW), vpH / (normH * visualH)) * 0.92;
+    const newScale = Math.min(vpW / (normW * visualW), vpH / (normH * visualH)) * 0.92;
     const clampedScale = Math.min(Math.max(newScale, MIN_SCALE), MAX_SCALE);
 
     // Translate to center crop in viewport
@@ -770,7 +677,7 @@ export default function ImageEditorScreen() {
     const outlineT = vpCY - (visualH * clampedScale * normH) / 2;
     const outlineW = visualW * clampedScale * normW;
     const outlineH = visualH * clampedScale * normH;
-    console.log("[ImageEditor] zoomToCropArea:", {
+    console.log('[ImageEditor] zoomToCropArea:', {
       viewport: { w: vpW, h: vpH },
       visualWH: { w: visualW.toFixed(1), h: visualH.toFixed(1) },
       newScale: clampedScale.toFixed(3),
@@ -797,7 +704,7 @@ export default function ImageEditorScreen() {
   useEffect(() => {
     if (
       pendingZoomRef.current &&
-      mode === "move" &&
+      mode === 'move' &&
       viewportSize.width > 0 &&
       viewportSize.height > 0 &&
       // Only zoom after viewport height has actually changed
@@ -812,7 +719,7 @@ export default function ImageEditorScreen() {
   // Reposition crop rect from normalized coords when viewport changes in crop mode
   // (handles aspect ratio row appearing/disappearing after resetToFullImage)
   useEffect(() => {
-    if (mode !== "crop" || !viewportSize.width || !viewportSize.height) return;
+    if (mode !== 'crop' || !viewportSize.width || !viewportSize.height) return;
     // At this point scale=1, translate=0 (from resetToFullImage)
     const vpCX = viewportSize.width / 2;
     const vpCY = viewportSize.height / 2;
@@ -941,7 +848,7 @@ export default function ImageEditorScreen() {
       pendingZoomRef.current = true;
       pendingZoomVpRef.current = viewportSize.height;
     }
-    setMode("move");
+    setMode('move');
   }, [hasCropped, viewportSize]);
 
   const discardCrop = useCallback(() => {
@@ -969,32 +876,32 @@ export default function ImageEditorScreen() {
       pendingZoomRef.current = true;
       pendingZoomVpRef.current = viewportSize.height;
     }
-    setMode("move");
+    setMode('move');
   }, [viewportSize, visualW, visualH]);
 
   const applyRotate = useCallback(() => {
-    setMode("move");
+    setMode('move');
   }, []);
 
   const discardRotate = useCallback(() => {
     setRotation90(prevRotation90.current);
     setFreeRotation(prevFreeRotation.current);
     rotSlider.value = prevFreeRotation.current;
-    setMode("move");
+    setMode('move');
   }, []);
 
   const toggleMode = useCallback(
     (m: EditorMode) => {
       if (mode === m) {
         // Clicking the same mode button again — discard changes
-        if (m === "crop") {
+        if (m === 'crop') {
           discardCrop();
-        } else if (m === "rotate") {
+        } else if (m === 'rotate') {
           discardRotate();
         }
       } else {
         // Entering crop or rotate mode — snapshot state and reset view
-        if (m === "crop") {
+        if (m === 'crop') {
           prevCropNorm.current = { ...cropNormRef.current };
           prevHasCropped.current = hasCropped;
           if (hasCropped) {
@@ -1003,14 +910,12 @@ export default function ImageEditorScreen() {
           setMode(m);
           if (!hasCropped) {
             initCropToBounds();
-            const entry = ASPECT_RATIOS.find(
-              (a) => a.value === cropAspectRatio,
-            );
+            const entry = ASPECT_RATIOS.find((a) => a.value === cropAspectRatio);
             if (entry?.ratio) {
               setTimeout(() => applyCropAspectRatio(entry.ratio), 0);
             }
           }
-        } else if (m === "rotate") {
+        } else if (m === 'rotate') {
           prevRotation90.current = rotation90;
           prevFreeRotation.current = freeRotation;
           if (hasCropped) {
@@ -1081,17 +986,16 @@ export default function ImageEditorScreen() {
       // This ensures consistent dimensions (handles EXIF orientation on Android)
       const needsProcessing = rotFlipActions.length > 0 || hasCropped;
       if (needsProcessing) {
-        const step1 = await ImageManipulator.manipulateAsync(
-          imageUri,
-          rotFlipActions,
-          { compress: 0.95, format: ImageManipulator.SaveFormat.JPEG },
-        );
+        const step1 = await ImageManipulator.manipulateAsync(imageUri, rotFlipActions, {
+          compress: 0.95,
+          format: ImageManipulator.SaveFormat.JPEG,
+        });
         currentUri = step1.uri;
         realW = step1.width;
         realH = step1.height;
 
         if (realW !== imageSize.width || realH !== imageSize.height) {
-          console.log("[ImageEditor] Dimension correction:", {
+          console.log('[ImageEditor] Dimension correction:', {
             imageGetSize: { w: imageSize.width, h: imageSize.height },
             canonical: { w: realW, h: realH },
           });
@@ -1103,7 +1007,7 @@ export default function ImageEditorScreen() {
         const n = cropNormRef.current;
         const isFullImage = n.l <= 0 && n.t <= 0 && n.r >= 1 && n.b >= 1;
 
-        console.log("[ImageEditor] Save debug:", {
+        console.log('[ImageEditor] Save debug:', {
           realW,
           realH,
           norm: {
@@ -1126,7 +1030,7 @@ export default function ImageEditorScreen() {
           cropW = Math.min(cropW, realW - originX);
           cropH = Math.min(cropH, realH - originY);
 
-          console.log("[ImageEditor] Crop rect:", {
+          console.log('[ImageEditor] Crop rect:', {
             originX,
             originY,
             cropW,
@@ -1154,7 +1058,7 @@ export default function ImageEditorScreen() {
       resolveImageEditor(currentUri === imageUri ? imageUri : currentUri);
       navigation.goBack();
     } catch (err) {
-      console.error("Image editor error:", err);
+      console.error('Image editor error:', err);
       cancelImageEditor();
       navigation.goBack();
     } finally {
@@ -1177,52 +1081,47 @@ export default function ImageEditorScreen() {
     navigation.goBack();
   }, [navigation]);
 
-  const ready =
-    imageRenderSize.width > 0 &&
-    imageRenderSize.height > 0 &&
-    viewportSize.width > 0;
+  const ready = imageRenderSize.width > 0 && imageRenderSize.height > 0 && viewportSize.width > 0;
 
   // Corner visual mark — centered on the crop corner point (center of the handle)
-  const cornerMark = (corner: "tl" | "tr" | "bl" | "br") => {
+  const cornerMark = (corner: 'tl' | 'tr' | 'bl' | 'br') => {
     const sz = 20;
     const bw = 3;
-    const isTop = corner[0] === "t";
-    const isLeft = corner[1] === "l";
+    const isTop = corner[0] === 't';
+    const isLeft = corner[1] === 'l';
     // Position the bracket so its outer corner aligns with the center of the handle
     const offset = (HANDLE_SIZE - sz) / 2;
     return (
       <View
         style={{
-          position: "absolute",
+          position: 'absolute',
           width: sz,
           height: sz,
-          borderColor: "#fff",
+          borderColor: '#fff',
           top: isTop ? offset : undefined,
           bottom: !isTop ? offset : undefined,
           left: isLeft ? offset : undefined,
           right: !isLeft ? offset : undefined,
           ...(isTop && isLeft && { borderTopWidth: bw, borderLeftWidth: bw }),
           ...(isTop && !isLeft && { borderTopWidth: bw, borderRightWidth: bw }),
-          ...(!isTop &&
-            isLeft && { borderBottomWidth: bw, borderLeftWidth: bw }),
-          ...(!isTop &&
-            !isLeft && { borderBottomWidth: bw, borderRightWidth: bw }),
+          ...(!isTop && isLeft && { borderBottomWidth: bw, borderLeftWidth: bw }),
+          ...(!isTop && !isLeft && { borderBottomWidth: bw, borderRightWidth: bw }),
         }}
       />
     );
   };
 
   const modeHint =
-    mode === "crop"
-      ? "Drag corners to resize · Drag inside to move crop"
-      : mode === "rotate"
-        ? "Slide to rotate · Tap 0° to reset"
-        : "Pinch to zoom · Pan to move · Double-tap to reset";
+    mode === 'crop'
+      ? 'Drag corners to resize · Drag inside to move crop'
+      : mode === 'rotate'
+        ? 'Slide to rotate · Tap 0° to reset'
+        : 'Pinch to zoom · Pan to move · Double-tap to reset';
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
-      <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         {/* Top Bar */}
         <View style={styles.topBar}>
           <TouchableOpacity style={styles.topBarButton} onPress={handleCancel}>
@@ -1234,29 +1133,22 @@ export default function ImageEditorScreen() {
             onPress={handleDone}
             disabled={processing || !ready}
           >
-            <Text
-              style={[styles.doneButtonText, processing && { opacity: 0.5 }]}
-            >
-              {processing ? "Saving..." : "Done"}
+            <Text style={[styles.doneButtonText, processing && { opacity: 0.5 }]}>
+              {processing ? 'Saving...' : 'Done'}
             </Text>
           </TouchableOpacity>
         </View>
 
         {/* Viewport */}
         <View
-          style={[
-            styles.viewport,
-            { backgroundColor: bgColor === "white" ? "#fff" : "#000" },
-          ]}
+          style={[styles.viewport, { backgroundColor: bgColor === 'white' ? '#fff' : '#000' }]}
           onLayout={onViewportLayout}
         >
           {ready && (
             <>
               {/* Image */}
               <GestureDetector gesture={imageGesture}>
-                <Animated.View
-                  style={[styles.imageContainer, animatedImageStyle]}
-                >
+                <Animated.View style={[styles.imageContainer, animatedImageStyle]}>
                   <Animated.Image
                     source={{ uri: imageUri }}
                     style={[
@@ -1272,18 +1164,18 @@ export default function ImageEditorScreen() {
               </GestureDetector>
 
               {/* Outline — shows what will be saved (move mode only) */}
-              {mode === "move" && (
+              {mode === 'move' && (
                 <Animated.View
                   pointerEvents="none"
                   style={
                     hasCropped
                       ? [
                           {
-                            position: "absolute" as const,
+                            position: 'absolute' as const,
                             zIndex: 5,
                             borderWidth: 1.5,
                             borderColor: dashedOutlineColor,
-                            borderStyle: "dashed",
+                            borderStyle: 'dashed',
                           },
                           cropOutlineStyle,
                         ]
@@ -1295,61 +1187,51 @@ export default function ImageEditorScreen() {
               {/* Background color toggle - floating button */}
               <TouchableOpacity
                 style={{
-                  position: "absolute",
+                  position: 'absolute',
                   top: 8,
                   right: 8,
                   width: 36,
                   height: 36,
                   borderRadius: 18,
-                  backgroundColor: "rgba(0,0,0,0.5)",
-                  alignItems: "center",
-                  justifyContent: "center",
+                  backgroundColor: 'rgba(0,0,0,0.5)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                   zIndex: 30,
                   borderWidth: 1,
-                  borderColor: "rgba(255,255,255,0.2)",
+                  borderColor: 'rgba(255,255,255,0.2)',
                 }}
-                onPress={() =>
-                  setBgColor((c) => (c === "black" ? "white" : "black"))
-                }
+                onPress={() => setBgColor((c) => (c === 'black' ? 'white' : 'black'))}
               >
                 <View
                   style={{
                     width: 20,
                     height: 20,
                     borderRadius: 10,
-                    backgroundColor: bgColor === "black" ? "#fff" : "#000",
+                    backgroundColor: bgColor === 'black' ? '#fff' : '#000',
                     borderWidth: 1.5,
-                    borderColor: bgColor === "black" ? "#fff" : "#555",
+                    borderColor: bgColor === 'black' ? '#fff' : '#555',
                   }}
                 />
               </TouchableOpacity>
 
               {/* Crop overlay — only visible in crop mode */}
-              {mode === "crop" && (
+              {mode === 'crop' && (
                 <>
                   <View style={styles.overlayContainer} pointerEvents="none">
-                    <Animated.View
-                      style={[styles.overlayTop, overlayTopStyle]}
-                    />
-                    <Animated.View
-                      style={[styles.overlayBottom, overlayBottomStyle]}
-                    />
-                    <Animated.View
-                      style={[styles.overlayLeft, overlayLeftStyle]}
-                    />
-                    <Animated.View
-                      style={[styles.overlayRight, overlayRightStyle]}
-                    />
+                    <Animated.View style={[styles.overlayTop, overlayTopStyle]} />
+                    <Animated.View style={[styles.overlayBottom, overlayBottomStyle]} />
+                    <Animated.View style={[styles.overlayLeft, overlayLeftStyle]} />
+                    <Animated.View style={[styles.overlayRight, overlayRightStyle]} />
                     <Animated.View style={[styles.cropBorder, cropBorderStyle]}>
-                      <View style={[styles.gridLineH, { top: "33.33%" }]} />
-                      <View style={[styles.gridLineH, { top: "66.66%" }]} />
-                      <View style={[styles.gridLineV, { left: "33.33%" }]} />
-                      <View style={[styles.gridLineV, { left: "66.66%" }]} />
+                      <View style={[styles.gridLineH, { top: '33.33%' }]} />
+                      <View style={[styles.gridLineH, { top: '66.66%' }]} />
+                      <View style={[styles.gridLineV, { left: '33.33%' }]} />
+                      <View style={[styles.gridLineV, { left: '66.66%' }]} />
                     </Animated.View>
                   </View>
 
                   {/* Interactive elements — only in crop mode */}
-                  {mode === "crop" && (
+                  {mode === 'crop' && (
                     <>
                       {/* Draggable crop area (move whole box) */}
                       <GestureDetector gesture={cropMoveGesture}>
@@ -1358,24 +1240,16 @@ export default function ImageEditorScreen() {
 
                       {/* Corner handles */}
                       <GestureDetector gesture={tlGesture}>
-                        <Animated.View style={tlPos}>
-                          {cornerMark("tl")}
-                        </Animated.View>
+                        <Animated.View style={tlPos}>{cornerMark('tl')}</Animated.View>
                       </GestureDetector>
                       <GestureDetector gesture={trGesture}>
-                        <Animated.View style={trPos}>
-                          {cornerMark("tr")}
-                        </Animated.View>
+                        <Animated.View style={trPos}>{cornerMark('tr')}</Animated.View>
                       </GestureDetector>
                       <GestureDetector gesture={blGesture}>
-                        <Animated.View style={blPos}>
-                          {cornerMark("bl")}
-                        </Animated.View>
+                        <Animated.View style={blPos}>{cornerMark('bl')}</Animated.View>
                       </GestureDetector>
                       <GestureDetector gesture={brGesture}>
-                        <Animated.View style={brPos}>
-                          {cornerMark("br")}
-                        </Animated.View>
+                        <Animated.View style={brPos}>{cornerMark('br')}</Animated.View>
                       </GestureDetector>
                     </>
                   )}
@@ -1389,7 +1263,7 @@ export default function ImageEditorScreen() {
         <Text style={styles.modeHint}>{modeHint}</Text>
 
         {/* Aspect ratio picker (only in crop mode) */}
-        {mode === "crop" && (
+        {mode === 'crop' && (
           <View style={styles.aspectRatioRow}>
             {ASPECT_RATIOS.map((ar) => (
               <TouchableOpacity
@@ -1403,8 +1277,7 @@ export default function ImageEditorScreen() {
                 <Text
                   style={[
                     styles.aspectRatioChipText,
-                    cropAspectRatio === ar.value &&
-                      styles.aspectRatioChipTextActive,
+                    cropAspectRatio === ar.value && styles.aspectRatioChipTextActive,
                   ]}
                 >
                   {ar.label}
@@ -1415,12 +1288,10 @@ export default function ImageEditorScreen() {
         )}
 
         {/* Rotation slider (only in rotate mode) */}
-        {mode === "rotate" && (
+        {mode === 'rotate' && (
           <>
             <TouchableOpacity onPress={handleResetRotation}>
-              <Text style={styles.rotateSliderLabel}>
-                {freeRotation.toFixed(1)}°
-              </Text>
+              <Text style={styles.rotateSliderLabel}>{freeRotation.toFixed(1)}°</Text>
             </TouchableOpacity>
             <GestureDetector gesture={rotSliderGesture}>
               <View
@@ -1428,12 +1299,8 @@ export default function ImageEditorScreen() {
                 onLayout={(e) => setRotSliderWidth(e.nativeEvent.layout.width)}
               >
                 <View style={styles.rotateSliderTrack} />
-                <Animated.View
-                  style={[styles.rotateSliderFill, rotFillStyle]}
-                />
-                <Animated.View
-                  style={[styles.rotateSliderThumb, rotThumbStyle]}
-                />
+                <Animated.View style={[styles.rotateSliderFill, rotFillStyle]} />
+                <Animated.View style={[styles.rotateSliderThumb, rotThumbStyle]} />
               </View>
             </GestureDetector>
             <View style={styles.rotateSliderTicks}>
@@ -1446,54 +1313,30 @@ export default function ImageEditorScreen() {
 
         {/* Bottom Toolbar */}
         <View style={styles.bottomBar}>
-          {mode === "move" ? (
+          {mode === 'move' ? (
             <View style={styles.toolRow}>
-              <TouchableOpacity
-                style={styles.toolButton}
-                onPress={() => toggleMode("crop")}
-              >
+              <TouchableOpacity style={styles.toolButton} onPress={() => toggleMode('crop')}>
                 <Ionicons name="crop-outline" size={24} color="#fff" />
                 <Text style={styles.toolButtonText}>Crop</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.toolButton}
-                onPress={() => toggleMode("rotate")}
-              >
+              <TouchableOpacity style={styles.toolButton} onPress={() => toggleMode('rotate')}>
                 <Ionicons name="sync-outline" size={24} color="#fff" />
                 <Text style={styles.toolButtonText}>Rotate</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.toolButton}
-                onPress={handleRotateLeft}
-              >
-                <Ionicons
-                  name="return-up-back-outline"
-                  size={24}
-                  color="#fff"
-                />
+              <TouchableOpacity style={styles.toolButton} onPress={handleRotateLeft}>
+                <Ionicons name="return-up-back-outline" size={24} color="#fff" />
                 <Text style={styles.toolButtonText}>90° L</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.toolButton}
-                onPress={handleRotateRight}
-              >
-                <Ionicons
-                  name="return-up-forward-outline"
-                  size={24}
-                  color="#fff"
-                />
+              <TouchableOpacity style={styles.toolButton} onPress={handleRotateRight}>
+                <Ionicons name="return-up-forward-outline" size={24} color="#fff" />
                 <Text style={styles.toolButtonText}>90° R</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.toolButton} onPress={handleFlipH}>
-                <Ionicons
-                  name="swap-horizontal-outline"
-                  size={24}
-                  color="#fff"
-                />
+                <Ionicons name="swap-horizontal-outline" size={24} color="#fff" />
                 <Text style={styles.toolButtonText}>Flip H</Text>
               </TouchableOpacity>
 
@@ -1506,14 +1349,14 @@ export default function ImageEditorScreen() {
             <View style={styles.confirmBar}>
               <TouchableOpacity
                 style={[styles.confirmButton, styles.confirmButtonCancel]}
-                onPress={mode === "crop" ? discardCrop : discardRotate}
+                onPress={mode === 'crop' ? discardCrop : discardRotate}
               >
                 <Ionicons name="close" size={28} color="#fff" />
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.confirmButton, styles.confirmButtonApply]}
-                onPress={mode === "crop" ? applyCrop : applyRotate}
+                onPress={mode === 'crop' ? applyCrop : applyRotate}
               >
                 <Ionicons name="checkmark" size={28} color="#fff" />
               </TouchableOpacity>

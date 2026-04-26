@@ -65,26 +65,26 @@ Scan the QR code with Expo Go (Android) or Camera app (iOS) to run on your devic
 
 ## Documentation
 
-| Document | Description |
-|----------|-------------|
-| [User Guide](docs/USER_GUIDE.md) | How to use the app |
+| Document                                   | Description                      |
+| ------------------------------------------ | -------------------------------- |
+| [User Guide](docs/USER_GUIDE.md)           | How to use the app               |
 | [Developer Guide](docs/DEVELOPER_GUIDE.md) | Setup, architecture, conventions |
-| [Database](docs/DATABASE.md) | Schema, migrations, queries |
-| [API Reference](docs/API_REFERENCE.md) | Functions, hooks, components |
-| [Deployment](docs/DEPLOYMENT.md) | EAS build & publish |
+| [Database](docs/DATABASE.md)               | Schema, migrations, queries      |
+| [API Reference](docs/API_REFERENCE.md)     | Functions, hooks, components     |
+| [Deployment](docs/DEPLOYMENT.md)           | EAS build & publish              |
 
 ## Tech Stack
 
-| Category | Technology |
-|----------|------------|
-| Framework | React Native 0.81 |
-| Platform | Expo SDK 54 |
-| Database | SQLite (expo-sqlite) |
-| Navigation | React Navigation 7 |
-| State | React Context |
-| Styling | StyleSheet (dynamic themes) |
-| Storage | AsyncStorage (preferences) |
-| Images | expo-image-picker, expo-file-system |
+| Category   | Technology                          |
+| ---------- | ----------------------------------- |
+| Framework  | React Native 0.81                   |
+| Platform   | Expo SDK 54                         |
+| Database   | SQLite (expo-sqlite)                |
+| Navigation | React Navigation 7                  |
+| State      | React Context                       |
+| Styling    | StyleSheet (dynamic themes)         |
+| Storage    | AsyncStorage (preferences)          |
+| Images     | expo-image-picker, expo-file-system |
 
 ## Project Structure
 
@@ -107,12 +107,12 @@ digital-wardrobe/
 
 ## Scripts
 
-| Command | Description |
-|---------|-------------|
-| `npm start` | Start Expo development server |
+| Command           | Description                    |
+| ----------------- | ------------------------------ |
+| `npm start`       | Start Expo development server  |
 | `npm run android` | Run on Android device/emulator |
-| `npm run ios` | Run on iOS device/simulator |
-| `npm run web` | Run in web browser |
+| `npm run ios`     | Run on iOS device/simulator    |
+| `npm run web`     | Run in web browser             |
 
 ## Contributing
 

@@ -12,13 +12,7 @@ interface Props {
   onAction?: () => void;
 }
 
-export default function EmptyState({ 
-  icon = '👕', 
-  title, 
-  message, 
-  actionLabel, 
-  onAction 
-}: Props) {
+export default function EmptyState({ icon = '👕', title, message, actionLabel, onAction }: Props) {
   const { colors } = useTheme();
 
   return (
@@ -27,7 +21,10 @@ export default function EmptyState({
       <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
       {message && <Text style={[styles.message, { color: colors.textMuted }]}>{message}</Text>}
       {actionLabel && onAction && (
-        <TouchableOpacity style={[styles.button, { backgroundColor: colors.primary }]} onPress={onAction}>
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: colors.primary }]}
+          onPress={onAction}
+        >
           <Text style={styles.buttonText}>{actionLabel}</Text>
         </TouchableOpacity>
       )}

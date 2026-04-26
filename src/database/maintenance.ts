@@ -18,7 +18,7 @@ export async function cleanupOrphanedImages(): Promise<{ deleted: string[]; erro
 
     // Get all image URIs from database
     const dbImages = await db.getAllAsync<{ local_uri: string }>(
-      `SELECT local_uri FROM item_images WHERE deleted = 0`
+      `SELECT local_uri FROM item_images WHERE deleted = 0`,
     );
     const dbImageSet = new Set(dbImages.map((r) => r.local_uri));
 
@@ -118,9 +118,9 @@ export async function vacuumDatabase(): Promise<{
   try {
     // First, clean up images from filesystem for deleted items
     const deletedImages = await db.getAllAsync<{ local_uri: string }>(
-      `SELECT local_uri FROM item_images WHERE deleted = 1`
+      `SELECT local_uri FROM item_images WHERE deleted = 1`,
     );
-    
+
     for (const img of deletedImages) {
       try {
         const uri = img.local_uri.includes('/') ? img.local_uri : IMAGES_DIR + img.local_uri;
@@ -176,7 +176,7 @@ export async function validateDatabaseIntegrity(): Promise<{
   try {
     // SQLite integrity check
     const integrityResult = await db.getFirstAsync<{ integrity_check: string }>(
-      `SELECT integrity_check FROM pragma_integrity_check`
+      `SELECT integrity_check FROM pragma_integrity_check`,
     );
     const integrityCheck = integrityResult?.integrity_check ?? 'unknown';
 
@@ -185,10 +185,13 @@ export async function validateDatabaseIntegrity(): Promise<{
     }
 
     // Foreign key check
-    const fkErrors = await db.getAllAsync<{ table: string; rowid: number; parent: string; fkid: number }>(
-      `PRAGMA foreign_key_check`
-    );
-    
+    const fkErrors = await db.getAllAsync<{
+      table: string;
+      rowid: number;
+      parent: string;
+      fkid: number;
+    }>(`PRAGMA foreign_key_check`);
+
     if (fkErrors.length > 0) {
       issues.push(`Found ${fkErrors.length} foreign key violation(s)`);
       for (const err of fkErrors.slice(0, 5)) {
@@ -198,7 +201,7 @@ export async function validateDatabaseIntegrity(): Promise<{
 
     // Check for orphaned metadata
     const orphanedMeta = await db.getFirstAsync<{ count: number }>(
-      `SELECT COUNT(*) as count FROM metadata WHERE item_id NOT IN (SELECT id FROM items)`
+      `SELECT COUNT(*) as count FROM metadata WHERE item_id NOT IN (SELECT id FROM items)`,
     );
     if (orphanedMeta && orphanedMeta.count > 0) {
       issues.push(`${orphanedMeta.count} orphaned metadata record(s)`);
@@ -206,7 +209,7 @@ export async function validateDatabaseIntegrity(): Promise<{
 
     // Check for orphaned item_images
     const orphanedImages = await db.getFirstAsync<{ count: number }>(
-      `SELECT COUNT(*) as count FROM item_images WHERE item_id NOT IN (SELECT id FROM items)`
+      `SELECT COUNT(*) as count FROM item_images WHERE item_id NOT IN (SELECT id FROM items)`,
     );
     if (orphanedImages && orphanedImages.count > 0) {
       issues.push(`${orphanedImages.count} orphaned image record(s)`);
@@ -243,7 +246,7 @@ export async function exportData(): Promise<{
 
   try {
     const version = await db.getFirstAsync<{ version: number }>(
-      `SELECT MAX(version) as version FROM schema_info`
+      `SELECT MAX(version) as version FROM schema_info`,
     );
 
     const items = await db.getAllAsync(`SELECT * FROM items WHERE deleted = 0`);
@@ -281,19 +284,19 @@ export async function getDatabaseStats(): Promise<{
 
   try {
     const itemCount = await db.getFirstAsync<{ count: number }>(
-      `SELECT COUNT(*) as count FROM items WHERE deleted = 0`
+      `SELECT COUNT(*) as count FROM items WHERE deleted = 0`,
     );
     const tagCount = await db.getFirstAsync<{ count: number }>(
-      `SELECT COUNT(*) as count FROM tags WHERE deleted = 0`
+      `SELECT COUNT(*) as count FROM tags WHERE deleted = 0`,
     );
     const imageCount = await db.getFirstAsync<{ count: number }>(
-      `SELECT COUNT(*) as count FROM item_images WHERE deleted = 0`
+      `SELECT COUNT(*) as count FROM item_images WHERE deleted = 0`,
     );
     const deletedItemCount = await db.getFirstAsync<{ count: number }>(
-      `SELECT COUNT(*) as count FROM items WHERE deleted = 1`
+      `SELECT COUNT(*) as count FROM items WHERE deleted = 1`,
     );
     const categoriesResult = await db.getAllAsync<{ category: string }>(
-      `SELECT DISTINCT category FROM items WHERE deleted = 0 AND category IS NOT NULL AND category != ''`
+      `SELECT DISTINCT category FROM items WHERE deleted = 0 AND category IS NOT NULL AND category != ''`,
     );
 
     return {
@@ -314,12 +317,12 @@ export async function getDatabaseStats(): Promise<{
  */
 export async function getCategories(): Promise<string[]> {
   const db = await getDB();
-  
+
   try {
     const result = await db.getAllAsync<{ category: string }>(
       `SELECT DISTINCT category FROM items 
        WHERE deleted = 0 AND category IS NOT NULL AND category != ''
-       ORDER BY category ASC`
+       ORDER BY category ASC`,
     );
     return result.map((r) => r.category);
   } catch (err) {
@@ -333,10 +336,10 @@ export async function getCategories(): Promise<string[]> {
  */
 export async function getAllTags(): Promise<string[]> {
   const db = await getDB();
-  
+
   try {
     const result = await db.getAllAsync<{ name: string }>(
-      `SELECT DISTINCT name FROM tags WHERE deleted = 0 ORDER BY name ASC`
+      `SELECT DISTINCT name FROM tags WHERE deleted = 0 ORDER BY name ASC`,
     );
     return result.map((r) => r.name);
   } catch (err) {

@@ -14,10 +14,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDatabase } from '../../contexts/DatabaseContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import Toast from 'react-native-toast-message';
-import { RootStackParamList, WardrobeItem } from '../../types';
+import { RootStackParamList } from '../../types';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { Ionicons } from '@expo/vector-icons';
+
 import ImagePickerButton from '../../components/ImagePickerButton';
 import { saveImageLocally, getLocalImageUri } from '../../lib/filesystem';
 import CategoryPicker from '../../components/CategoryPicker';
@@ -28,10 +28,7 @@ import StyledButton from '../../components/StyledButton';
 import { createStyles } from './styles';
 import { useUnsavedChangesWarning } from '../../hooks/useUnsavedChangesWarning';
 
-type AddItemScreenNavigationProp = StackNavigationProp<
-  RootStackParamList,
-  'AddItem'
->;
+type AddItemScreenNavigationProp = StackNavigationProp<RootStackParamList, 'AddItem'>;
 
 type AddItemScreenRouteProp = RouteProp<RootStackParamList, 'AddItem'>;
 
@@ -65,13 +62,13 @@ export default function AddItemScreen() {
     if (editItem?.metadata) {
       const entries = Object.entries(editItem.metadata).map(([key, value]) => ({
         key,
-        value: String(value)
+        value: String(value),
       }));
       // Pad with defaults if few entries
       if (entries.length < 4) {
         const defaults = ['Color', 'Size', 'Brand', 'Material'];
-        const existingKeys = new Set(entries.map(e => e.key));
-        defaults.forEach(d => {
+        const existingKeys = new Set(entries.map((e) => e.key));
+        defaults.forEach((d) => {
           if (!existingKeys.has(d)) entries.push({ key: d, value: '' });
         });
       }
@@ -98,12 +95,12 @@ export default function AddItemScreen() {
     if (category !== savedState.category) return true;
     if (JSON.stringify(tags) !== JSON.stringify(savedState.tags)) return true;
     if (JSON.stringify(images) !== JSON.stringify(savedState.images)) return true;
-    
+
     const currentMetaObj = Object.fromEntries(
-      metadata.filter(m => m.key && m.value.trim() !== '').map(m => [m.key, m.value])
+      metadata.filter((m) => m.key && m.value.trim() !== '').map((m) => [m.key, m.value]),
     );
     if (JSON.stringify(currentMetaObj) !== JSON.stringify(savedState.metadata)) return true;
-    
+
     return false;
   }, [name, description, category, images, tags, metadata, savedState]);
 
@@ -138,9 +135,7 @@ export default function AddItemScreen() {
 
     try {
       const metaObj = Object.fromEntries(
-        metadata
-          .filter((m) => m.key && m.value.trim() !== '')
-          .map((m) => [m.key, m.value])
+        metadata.filter((m) => m.key && m.value.trim() !== '').map((m) => [m.key, m.value]),
       );
       const tagArr = tags;
 
@@ -206,7 +201,7 @@ export default function AddItemScreen() {
             setImages([]);
           }
         }
-        
+
         // Update saved state so hasUnsavedChanges becomes false
         setSavedState({
           name,
@@ -259,11 +254,7 @@ export default function AddItemScreen() {
             multiline
           />
 
-          <CategoryPicker
-            value={category}
-            onSelect={setCategory}
-            required
-          />
+          <CategoryPicker value={category} onSelect={setCategory} required />
 
           <Text style={styles.sectionTitle}>Metadata</Text>
           {metadata.map((m, idx) => (
@@ -287,14 +278,8 @@ export default function AddItemScreen() {
           <ScrollView horizontal style={styles.imageContainer}>
             {images.map((uri, idx) => (
               <View key={idx} style={styles.imageWrapper}>
-                <Image
-                  source={{ uri: getLocalImageUri(uri) }}
-                  style={styles.imagePreview}
-                />
-                <TouchableOpacity
-                  style={styles.deleteImageButton}
-                  onPress={() => removeImage(idx)}
-                >
+                <Image source={{ uri: getLocalImageUri(uri) }} style={styles.imagePreview} />
+                <TouchableOpacity style={styles.deleteImageButton} onPress={() => removeImage(idx)}>
                   <Text style={styles.deleteImageText}>✕</Text>
                 </TouchableOpacity>
               </View>
@@ -322,9 +307,9 @@ export default function AddItemScreen() {
                 onValueChange={setMultiAdd}
                 trackColor={{
                   false: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-                  true: colors.primary + '80'
+                  true: colors.primary + '80',
                 }}
-                thumbColor={multiAdd ? colors.primary : (isDark ? colors.textMuted : '#f4f3f4')}
+                thumbColor={multiAdd ? colors.primary : isDark ? colors.textMuted : '#f4f3f4'}
                 ios_backgroundColor={isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}
               />
               <Text style={{ marginLeft: 10, color: colors.text }}>Add multiple items</Text>
@@ -339,8 +324,8 @@ export default function AddItemScreen() {
               onPress={() => navigation.goBack()}
             />
             <StyledButton
-              title={isEditing ? "Update Item" : "Save Item"}
-              icon={isEditing ? "save-outline" : "checkmark-circle-outline"}
+              title={isEditing ? 'Update Item' : 'Save Item'}
+              icon={isEditing ? 'save-outline' : 'checkmark-circle-outline'}
               onPress={async () => {
                 const result = await handleAddItem();
 
@@ -360,8 +345,6 @@ export default function AddItemScreen() {
                   navigation.goBack();
                   return;
                 }
-
-
 
                 Toast.show({
                   type: 'success',

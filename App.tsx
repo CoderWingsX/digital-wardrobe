@@ -18,8 +18,8 @@ function AppContent() {
 
   if (initializing) {
     return (
-      <LoadingScreen 
-        message="Starting up..." 
+      <LoadingScreen
+        message="Starting up..."
         showMigration={migrationInfo !== null && migrationInfo.migrationsRun > 0}
         migrationInfo={migrationInfo ?? undefined}
       />

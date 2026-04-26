@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
   Share,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+
 import CustomDialog from '../../components/CustomDialog';
 import { useDatabase } from '../../contexts/DatabaseContext';
 import {
@@ -25,7 +25,7 @@ import {
   sunsetColors,
   oceanColors,
   crimsonColors,
-  slateColors
+  slateColors,
 } from '../../contexts/ThemeContext';
 import {
   cleanupOrphanedImages,
@@ -111,12 +111,12 @@ export default function SettingsScreen() {
               const result = await cleanupOrphanedImages();
               Alert.alert(
                 'Cleanup Complete',
-                `Deleted: ${result.deleted.length} files\nErrors: ${result.errors.length}`
+                `Deleted: ${result.deleted.length} files\nErrors: ${result.errors.length}`,
               );
             });
           },
         },
-      ]
+      ],
     );
   };
 
@@ -133,12 +133,12 @@ export default function SettingsScreen() {
               const result = await cleanupOrphanedRecords();
               Alert.alert(
                 'Cleanup Complete',
-                `Removed:\n- ${result.metadata} metadata\n- ${result.itemTags} item-tag links\n- ${result.tags} unused tags`
+                `Removed:\n- ${result.metadata} metadata\n- ${result.itemTags} item-tag links\n- ${result.tags} unused tags`,
               );
             });
           },
         },
-      ]
+      ],
     );
   };
 
@@ -156,13 +156,13 @@ export default function SettingsScreen() {
               const result = await vacuumDatabase();
               Alert.alert(
                 'Vacuum Complete',
-                `Permanently deleted:\n- ${result.items} items\n- ${result.metadata} metadata\n- ${result.images} images\n- ${result.itemTags} tag links\n- ${result.tags} tags`
+                `Permanently deleted:\n- ${result.items} items\n- ${result.metadata} metadata\n- ${result.images} images\n- ${result.itemTags} tag links\n- ${result.tags} tags`,
               );
               await handleRefreshStats();
             });
           },
         },
-      ]
+      ],
     );
   };
 
@@ -182,12 +182,7 @@ export default function SettingsScreen() {
     });
   };
 
-  const renderButton = (
-    key: string,
-    label: string,
-    onPress: () => void,
-    destructive = false
-  ) => (
+  const renderButton = (key: string, label: string, onPress: () => void, destructive = false) => (
     <TouchableOpacity
       style={[styles.button, destructive && styles.destructiveButton]}
       onPress={onPress}
@@ -223,24 +218,21 @@ export default function SettingsScreen() {
     const isActive = mode === value;
 
     // Style for the theme preview button
-    const containerStyle = value === 'system'
-      ? { backgroundColor: colors.surface } // Generic for system
-      : { backgroundColor: themeColors.background };
+    const containerStyle =
+      value === 'system'
+        ? { backgroundColor: colors.surface } // Generic for system
+        : { backgroundColor: themeColors.background };
 
-    const textStyle = value === 'system'
-      ? { color: colors.text }
-      : { color: themeColors.text };
+    const textStyle = value === 'system' ? { color: colors.text } : { color: themeColors.text };
 
-    const borderColor = value === 'system'
-      ? colors.primary
-      : themeColors.primary;
+    const borderColor = value === 'system' ? colors.primary : themeColors.primary;
 
     return (
       <TouchableOpacity
         style={[
           styles.themeOption,
           { backgroundColor: containerStyle.backgroundColor },
-          isActive && [styles.themeOptionActive, { borderColor }]
+          isActive && [styles.themeOptionActive, { borderColor }],
         ]}
         onPress={() => setMode(value)}
         accessibilityLabel={`${label} theme`}
@@ -253,12 +245,23 @@ export default function SettingsScreen() {
               <View style={[styles.swatchPart, { backgroundColor: darkColors.background }]} />
             </View>
           ) : (
-            <View style={[styles.swatch, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
+            <View
+              style={[
+                styles.swatch,
+                { backgroundColor: themeColors.surface, borderColor: themeColors.border },
+              ]}
+            >
               <View style={[styles.swatchIndicator, { backgroundColor: themeColors.primary }]} />
             </View>
           )}
         </View>
-        <Text style={[styles.themeOptionText, { color: textStyle.color }, isActive && styles.themeOptionTextActive]}>
+        <Text
+          style={[
+            styles.themeOptionText,
+            { color: textStyle.color },
+            isActive && styles.themeOptionTextActive,
+          ]}
+        >
           {label}
         </Text>
       </TouchableOpacity>
@@ -352,30 +355,35 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Data Management</Text>
           <Text style={styles.sectionHint}>Manage your wardrobe data</Text>
-          {renderButton('clearAll', 'Clear All Items', async () => {
-            if (items.length === 0) {
-              Alert.alert('No Items', 'Your wardrobe is already empty.');
-              return;
-            }
-            Alert.alert(
-              'Clear All Items',
-              `This will delete all ${items.length} items from your wardrobe. This cannot be undone. Continue?`,
-              [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Delete All',
-                  style: 'destructive',
-                  onPress: async () => {
-                    await runWithLoading('clearAll', async () => {
-                      await clearAllOptimistic();
-                      await refresh();
-                      Alert.alert('Success', 'All items have been cleared.');
-                    });
+          {renderButton(
+            'clearAll',
+            'Clear All Items',
+            async () => {
+              if (items.length === 0) {
+                Alert.alert('No Items', 'Your wardrobe is already empty.');
+                return;
+              }
+              Alert.alert(
+                'Clear All Items',
+                `This will delete all ${items.length} items from your wardrobe. This cannot be undone. Continue?`,
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Delete All',
+                    style: 'destructive',
+                    onPress: async () => {
+                      await runWithLoading('clearAll', async () => {
+                        await clearAllOptimistic();
+                        await refresh();
+                        Alert.alert('Success', 'All items have been cleared.');
+                      });
+                    },
                   },
-                },
-              ]
-            );
-          }, true)}
+                ],
+              );
+            },
+            true,
+          )}
         </View>
 
         <View style={styles.section}>
@@ -385,9 +393,7 @@ export default function SettingsScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Test Data</Text>
-          <Text style={styles.sectionHint}>
-            Load sample items to test search and filtering
-          </Text>
+          <Text style={styles.sectionHint}>Load sample items to test search and filtering</Text>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Available Items</Text>
             <Text style={styles.infoValue}>{testDataInfo.total}</Text>
@@ -400,9 +406,13 @@ export default function SettingsScreen() {
             <Text style={styles.infoLabel}>Categories</Text>
             <Text style={styles.infoValue}>{testDataInfo.categories.join(', ')}</Text>
           </View>
-          {renderButton('loadTest', `Load Test Data (~${Math.ceil(testDataInfo.total / 2)} items)`, () => {
-            setLoadTestDialogVisible(true);
-          })}
+          {renderButton(
+            'loadTest',
+            `Load Test Data (~${Math.ceil(testDataInfo.total / 2)} items)`,
+            () => {
+              setLoadTestDialogVisible(true);
+            },
+          )}
 
           <CustomDialog
             visible={loadTestDialogVisible}
@@ -425,30 +435,35 @@ export default function SettingsScreen() {
               },
             ]}
           />
-          {renderButton('unloadTest', 'Remove All Test Data', async () => {
-            if (testDataCount === 0) {
-              Alert.alert('No Test Data', 'There is no test data to remove.');
-              return;
-            }
-            Alert.alert(
-              'Remove Test Data',
-              `This will remove ${testDataCount} test items and their images. Continue?`,
-              [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Remove',
-                  style: 'destructive',
-                  onPress: async () => {
-                    await runWithLoading('unloadTest', async () => {
-                      const result = await unloadTestData();
-                      await refresh();
-                      Alert.alert('Test Data Removed', `Removed: ${result.removed} items`);
-                    });
+          {renderButton(
+            'unloadTest',
+            'Remove All Test Data',
+            async () => {
+              if (testDataCount === 0) {
+                Alert.alert('No Test Data', 'There is no test data to remove.');
+                return;
+              }
+              Alert.alert(
+                'Remove Test Data',
+                `This will remove ${testDataCount} test items and their images. Continue?`,
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Remove',
+                    style: 'destructive',
+                    onPress: async () => {
+                      await runWithLoading('unloadTest', async () => {
+                        const result = await unloadTestData();
+                        await refresh();
+                        Alert.alert('Test Data Removed', `Removed: ${result.removed} items`);
+                      });
+                    },
                   },
-                },
-              ]
-            );
-          }, true)}
+                ],
+              );
+            },
+            true,
+          )}
         </View>
       </ScrollView>
     </>
