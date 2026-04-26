@@ -69,15 +69,23 @@ export default function ImageEditorScreen() {
   const [mode, setMode] = useState<EditorMode>("move");
   const [bgColor, setBgColor] = useState<"black" | "white">("black");
   const [hasCropped, setHasCropped] = useState(false);
-  const hasCroppedRef = useRef(false);
   const [cropAspectRatio, setCropAspectRatio] =
     useState<CropAspectRatio>("free");
   const cropInitialized = useRef(false);
   // Normalized crop coords (0–1 fractions of image at scale=1)
   const cropNormRef = useRef({ l: 0, t: 0, r: 1, b: 1 });
+  // Pending zoom flag — defers zoomToCropArea until viewport settles
+  const pendingZoomRef = useRef(false);
+  // Viewport height when pending zoom was requested (to detect layout change)
+  const pendingZoomVpRef = useRef(0);
 
   // Shared value for crop aspect ratio (0 = free, otherwise w/h ratio)
   const cropRatioSV = useSharedValue(0);
+  // Shared values for normalized crop coords (for outline animation)
+  const cropNormL = useSharedValue(0);
+  const cropNormT = useSharedValue(0);
+  const cropNormR = useSharedValue(1);
+  const cropNormB = useSharedValue(1);
 
   // Image transform shared values
   const scale = useSharedValue(1);
@@ -197,67 +205,26 @@ export default function ImageEditorScreen() {
     const s = scale.value;
     const imgW = visualW * s;
     const imgH = visualH * s;
-    const vpCX = viewportSize.width / 2;
-    const vpCY = viewportSize.height / 2;
 
-    // In move mode, clamp so image covers full viewport center area
-    // (using the visual image bounds, not the crop rect)
-    const halfImgW = imgW / 2;
-    const halfImgH = imgH / 2;
-    const halfVW = visualW / 2; // original visual half at scale=1
-    const halfVH = visualH / 2;
+    // Image must cover its original footprint (no empty space)
+    const maxTX = Math.max(imgW / 2 - visualW / 2, 0);
+    const maxTY = Math.max(imgH / 2 - visualH / 2, 0);
 
-    // Image left edge <= visual left edge at scale=1 (so image covers its own initial area)
-    const maxTX = halfImgW - halfVW; // how far right we can go
-    const minTX = -(halfImgW - halfVW); // how far left
-    const maxTY = halfImgH - halfVH;
-    const minTY = -(halfImgH - halfVH);
-
-    if (maxTX < 0) {
+    if (maxTX === 0) {
       translateX.value = withTiming(0, { duration: 200 });
     } else {
-      translateX.value = withTiming(clamp(translateX.value, minTX, maxTX), {
+      translateX.value = withTiming(clamp(translateX.value, -maxTX, maxTX), {
         duration: 200,
       });
     }
-    if (maxTY < 0) {
+    if (maxTY === 0) {
       translateY.value = withTiming(0, { duration: 200 });
     } else {
-      translateY.value = withTiming(clamp(translateY.value, minTY, maxTY), {
+      translateY.value = withTiming(clamp(translateY.value, -maxTY, maxTY), {
         duration: 200,
       });
     }
   };
-
-  // After pan/zoom in move mode, update cropNormRef to match what's under the fixed outline
-  const updateCropFromViewport = useCallback(
-    (s: number, tx: number, ty: number) => {
-      if (!hasCroppedRef.current) return;
-      const vpCX = viewportSize.width / 2;
-      const vpCY = viewportSize.height / 2;
-
-      // Image bounds in viewport with final clamped transform
-      const imgLeft = vpCX - (visualW * s) / 2 + tx;
-      const imgTop = vpCY - (visualH * s) / 2 + ty;
-      const imgW = visualW * s;
-      const imgH = visualH * s;
-
-      // Crop rect stayed fixed on screen — compute new normalized coords
-      const nl = Math.max(0, Math.min(1, (cropL.value - imgLeft) / imgW));
-      const nt = Math.max(0, Math.min(1, (cropT.value - imgTop) / imgH));
-      const nr = Math.max(0, Math.min(1, (cropR.value - imgLeft) / imgW));
-      const nb = Math.max(0, Math.min(1, (cropB.value - imgTop) / imgH));
-
-      cropNormRef.current = { l: nl, t: nt, r: nr, b: nb };
-      console.log("[ImageEditor] cropNorm from pan/zoom:", {
-        l: nl.toFixed(3),
-        t: nt.toFixed(3),
-        r: nr.toFixed(3),
-        b: nb.toFixed(3),
-      });
-    },
-    [viewportSize, visualW, visualH],
-  );
 
   // --- IMAGE GESTURES (only in move mode) ---
   const pinchGesture = Gesture.Pinch()
@@ -272,27 +239,13 @@ export default function ImageEditorScreen() {
       );
     })
     .onEnd(() => {
-      let finalS = scale.value;
-      let finalTX = translateX.value;
-      let finalTY = translateY.value;
-      if (finalS < MIN_SCALE) {
-        finalS = MIN_SCALE;
-        finalTX = 0;
-        finalTY = 0;
+      if (scale.value < MIN_SCALE) {
         scale.value = withTiming(MIN_SCALE, { duration: 200 });
         translateX.value = withTiming(0, { duration: 200 });
         translateY.value = withTiming(0, { duration: 200 });
       } else {
-        // Compute final clamped translate
-        const imgW = visualW * finalS;
-        const imgH = visualH * finalS;
-        const maxTX = imgW / 2 - visualW / 2;
-        const maxTY = imgH / 2 - visualH / 2;
-        finalTX = maxTX < 0 ? 0 : clamp(finalTX, -maxTX, maxTX);
-        finalTY = maxTY < 0 ? 0 : clamp(finalTY, -maxTY, maxTY);
         clampTranslation();
       }
-      runOnJS(updateCropFromViewport)(finalS, finalTX, finalTY);
     });
 
   const panGesture = Gesture.Pan()
@@ -308,21 +261,26 @@ export default function ImageEditorScreen() {
       translateY.value = savedTY.value + e.translationY;
     })
     .onEnd(() => {
-      // Compute final clamped translate
-      const s = scale.value;
-      const imgW = visualW * s;
-      const imgH = visualH * s;
-      const maxTX = imgW / 2 - visualW / 2;
-      const maxTY = imgH / 2 - visualH / 2;
-      const finalTX = maxTX < 0 ? 0 : clamp(translateX.value, -maxTX, maxTX);
-      const finalTY = maxTY < 0 ? 0 : clamp(translateY.value, -maxTY, maxTY);
       clampTranslation();
-      runOnJS(updateCropFromViewport)(s, finalTX, finalTY);
+    });
+
+  const doubleTapGesture = Gesture.Tap()
+    .enabled(mode === "move")
+    .numberOfTaps(2)
+    .onEnd(() => {
+      "worklet";
+      scale.value = withTiming(1, { duration: 250 });
+      translateX.value = withTiming(0, { duration: 250 });
+      translateY.value = withTiming(0, { duration: 250 });
+      savedScale.value = 1;
+      savedTX.value = 0;
+      savedTY.value = 0;
     });
 
   const imageGesture = Gesture.Simultaneous(
     panGesture,
     pinchGesture,
+    doubleTapGesture,
   );
 
   const animatedImageStyle = useAnimatedStyle(() => ({
@@ -354,8 +312,11 @@ export default function ImageEditorScreen() {
       nr = Math.max(0, Math.min(1, nr));
       nb = Math.max(0, Math.min(1, nb));
       setHasCropped(true);
-      hasCroppedRef.current = true;
       cropNormRef.current = { l: nl, t: nt, r: nr, b: nb };
+      cropNormL.value = nl;
+      cropNormT.value = nt;
+      cropNormR.value = nr;
+      cropNormB.value = nb;
       console.log("[ImageEditor] cropNorm updated:", {
         l: nl.toFixed(3),
         t: nt.toFixed(3),
@@ -700,6 +661,27 @@ export default function ImageEditorScreen() {
     };
   });
 
+  // Crop outline — tracks image transform + normalized crop coords
+  const cropOutlineStyle = useAnimatedStyle(() => {
+    const s = scale.value;
+    const vpCX = viewportSize.width / 2;
+    const vpCY = viewportSize.height / 2;
+    const tx = translateX.value;
+    const ty = translateY.value;
+    const imgL = vpCX - (visualW * s) / 2 + tx;
+    const imgT = vpCY - (visualH * s) / 2 + ty;
+    const imgW = visualW * s;
+    const imgH = visualH * s;
+    return {
+      position: "absolute" as const,
+      left: imgL + cropNormL.value * imgW,
+      top: imgT + cropNormT.value * imgH,
+      width: (cropNormR.value - cropNormL.value) * imgW,
+      height: (cropNormB.value - cropNormT.value) * imgH,
+      zIndex: 5,
+    };
+  });
+
   // --- ACTIONS ---
   const resetTransforms = useCallback(() => {
     scale.value = 1;
@@ -727,6 +709,10 @@ export default function ImageEditorScreen() {
     cropB.value = Math.min(viewportSize.height, imgB);
     // Reset normalized to full image
     cropNormRef.current = { l: 0, t: 0, r: 1, b: 1 };
+    cropNormL.value = 0;
+    cropNormT.value = 0;
+    cropNormR.value = 1;
+    cropNormB.value = 1;
   }, [viewportSize, visualW, visualH]);
 
   // Zoom so cropped area fills the viewport (non-destructive)
@@ -742,7 +728,7 @@ export default function ImageEditorScreen() {
     const vpCX = vpW / 2;
     const vpCY = vpH / 2;
 
-    // Scale needed to fill viewport with crop area (8% padding)
+    // Scale needed to fill viewport with crop area (8% padding for visual clarity)
     const newScale =
       Math.min(vpW / (normW * visualW), vpH / (normH * visualH)) * 0.92;
     const clampedScale = Math.min(Math.max(newScale, MIN_SCALE), MAX_SCALE);
@@ -753,6 +739,25 @@ export default function ImageEditorScreen() {
     const newTX = visualW * clampedScale * (0.5 - normCX);
     const newTY = visualH * clampedScale * (0.5 - normCY);
 
+    // Compute expected outline position for debugging
+    const outlineL = vpCX - (visualW * clampedScale * normW) / 2;
+    const outlineT = vpCY - (visualH * clampedScale * normH) / 2;
+    const outlineW = visualW * clampedScale * normW;
+    const outlineH = visualH * clampedScale * normH;
+    console.log("[ImageEditor] zoomToCropArea:", {
+      viewport: { w: vpW, h: vpH },
+      visualWH: { w: visualW.toFixed(1), h: visualH.toFixed(1) },
+      newScale: clampedScale.toFixed(3),
+      newTX: newTX.toFixed(1),
+      newTY: newTY.toFixed(1),
+      expectedOutline: {
+        l: outlineL.toFixed(1),
+        t: outlineT.toFixed(1),
+        w: outlineW.toFixed(1),
+        h: outlineH.toFixed(1),
+      },
+    });
+
     const dur = { duration: 300 };
     scale.value = withTiming(clampedScale, dur);
     savedScale.value = clampedScale;
@@ -760,50 +765,38 @@ export default function ImageEditorScreen() {
     translateY.value = withTiming(newTY, dur);
     savedTX.value = newTX;
     savedTY.value = newTY;
-
-    // Update crop rect to match new transform
-    const imgL = vpCX - (visualW * clampedScale) / 2 + newTX;
-    const imgT = vpCY - (visualH * clampedScale) / 2 + newTY;
-    const imgW = visualW * clampedScale;
-    const imgH = visualH * clampedScale;
-    cropL.value = withTiming(imgL + n.l * imgW, dur);
-    cropT.value = withTiming(imgT + n.t * imgH, dur);
-    cropR.value = withTiming(imgL + n.r * imgW, dur);
-    cropB.value = withTiming(imgT + n.b * imgH, dur);
   }, [viewportSize, visualW, visualH]);
 
-  // Re-clamp crop rect when viewport resizes in crop mode
-  // (handles aspect ratio row appearing/disappearing)
+  // Execute pending zoom after viewport settles (mode switch causes layout change)
+  useEffect(() => {
+    if (
+      pendingZoomRef.current &&
+      mode === "move" &&
+      viewportSize.width > 0 &&
+      viewportSize.height > 0 &&
+      // Only zoom after viewport height has actually changed
+      // (aspect ratio row must have disappeared, changing layout)
+      viewportSize.height !== pendingZoomVpRef.current
+    ) {
+      pendingZoomRef.current = false;
+      zoomToCropArea();
+    }
+  }, [mode, viewportSize, zoomToCropArea]);
+
+  // Reposition crop rect from normalized coords when viewport changes in crop mode
+  // (handles aspect ratio row appearing/disappearing after resetToFullImage)
   useEffect(() => {
     if (mode !== "crop" || !viewportSize.width || !viewportSize.height) return;
-    const vpW = viewportSize.width;
-    const vpH = viewportSize.height;
-    let changed = false;
-    if (cropB.value > vpH) {
-      cropB.value = vpH;
-      changed = true;
-    }
-    if (cropR.value > vpW) {
-      cropR.value = vpW;
-      changed = true;
-    }
-    if (changed) {
-      // Also update normalized coords
-      const s = scale.value;
-      const vpCX = vpW / 2;
-      const vpCY = vpH / 2;
-      const tx = translateX.value;
-      const ty = translateY.value;
-      const imgL = vpCX - (visualW * s) / 2 + tx;
-      const imgT = vpCY - (visualH * s) / 2 + ty;
-      const imgW = visualW * s;
-      const imgH = visualH * s;
-      const nl = Math.max(0, Math.min(1, (cropL.value - imgL) / imgW));
-      const nt = Math.max(0, Math.min(1, (cropT.value - imgT) / imgH));
-      const nr = Math.max(0, Math.min(1, (cropR.value - imgL) / imgW));
-      const nb = Math.max(0, Math.min(1, (cropB.value - imgT) / imgH));
-      cropNormRef.current = { l: nl, t: nt, r: nr, b: nb };
-    }
+    // At this point scale=1, translate=0 (from resetToFullImage)
+    const vpCX = viewportSize.width / 2;
+    const vpCY = viewportSize.height / 2;
+    const imgL = vpCX - visualW / 2;
+    const imgT = vpCY - visualH / 2;
+    const n = cropNormRef.current;
+    cropL.value = imgL + n.l * visualW;
+    cropT.value = imgT + n.t * visualH;
+    cropR.value = imgL + n.r * visualW;
+    cropB.value = imgT + n.b * visualH;
   }, [mode, viewportSize]);
 
   // Reset to full image view, restoring crop rect from normalized coords
@@ -832,7 +825,6 @@ export default function ImageEditorScreen() {
     setRotation90((r) => (r - 90 + 360) % 360);
     resetTransforms();
     setHasCropped(false);
-    hasCroppedRef.current = false;
     // Reset crop to new image bounds after state settles
     setTimeout(() => initCropToBounds(), 50);
   }, [resetTransforms]);
@@ -841,7 +833,6 @@ export default function ImageEditorScreen() {
     setRotation90((r) => (r + 90) % 360);
     resetTransforms();
     setHasCropped(false);
-    hasCroppedRef.current = false;
     setTimeout(() => initCropToBounds(), 50);
   }, [resetTransforms]);
 
@@ -899,7 +890,6 @@ export default function ImageEditorScreen() {
       cropR.value = newL + newW;
       cropB.value = newT + newH;
       setHasCropped(true);
-      hasCroppedRef.current = true;
       // Save normalized coords
       const rawImgL = vpCX - (visualW * s) / 2 + tx;
       const rawImgT = vpCY - (visualH * s) / 2 + ty;
@@ -911,6 +901,10 @@ export default function ImageEditorScreen() {
         r: (newL + newW - rawImgL) / rawImgW,
         b: (newT + newH - rawImgT) / rawImgH,
       };
+      cropNormL.value = cropNormRef.current.l;
+      cropNormT.value = cropNormRef.current.t;
+      cropNormR.value = cropNormRef.current.r;
+      cropNormB.value = cropNormRef.current.b;
     },
     [viewportSize, visualW, visualH],
   );
@@ -919,10 +913,39 @@ export default function ImageEditorScreen() {
     (m: EditorMode) => {
       if (mode === m) {
         // Switching back to move mode
-        setMode("move");
         if (hasCropped) {
-          zoomToCropArea();
+          // Log crop box coords before switching
+          const s = scale.value;
+          const vpCX = viewportSize.width / 2;
+          const vpCY = viewportSize.height / 2;
+          const tx = translateX.value;
+          const ty = translateY.value;
+          console.log("[ImageEditor] crop→move switch:", {
+            cropBox: {
+              l: cropL.value.toFixed(1),
+              t: cropT.value.toFixed(1),
+              r: cropR.value.toFixed(1),
+              b: cropB.value.toFixed(1),
+            },
+            norm: {
+              l: cropNormRef.current.l.toFixed(4),
+              t: cropNormRef.current.t.toFixed(4),
+              r: cropNormRef.current.r.toFixed(4),
+              b: cropNormRef.current.b.toFixed(4),
+            },
+            viewport: { w: viewportSize.width, h: viewportSize.height },
+            visualWH: { w: visualW.toFixed(1), h: visualH.toFixed(1) },
+            transform: {
+              s: s.toFixed(2),
+              tx: tx.toFixed(1),
+              ty: ty.toFixed(1),
+            },
+          });
+          // Defer zoom until viewport settles (aspect ratio row disappears)
+          pendingZoomRef.current = true;
+          pendingZoomVpRef.current = viewportSize.height;
         }
+        setMode("move");
       } else {
         // Entering crop or rotate mode — reset to full image view
         if (hasCropped) {
@@ -945,7 +968,6 @@ export default function ImageEditorScreen() {
       initCropToBounds,
       cropAspectRatio,
       applyCropAspectRatio,
-      zoomToCropArea,
       resetToFullImage,
     ],
   );
@@ -993,7 +1015,10 @@ export default function ImageEditorScreen() {
       let realW = imageSize.width;
       let realH = imageSize.height;
 
-      if (rotFlipActions.length > 0) {
+      // Always process through manipulateAsync when we need to modify the image
+      // This ensures consistent dimensions (handles EXIF orientation on Android)
+      const needsProcessing = rotFlipActions.length > 0 || hasCropped;
+      if (needsProcessing) {
         const step1 = await ImageManipulator.manipulateAsync(
           imageUri,
           rotFlipActions,
@@ -1002,13 +1027,31 @@ export default function ImageEditorScreen() {
         currentUri = step1.uri;
         realW = step1.width;
         realH = step1.height;
+
+        if (realW !== imageSize.width || realH !== imageSize.height) {
+          console.log("[ImageEditor] Dimension correction:", {
+            imageGetSize: { w: imageSize.width, h: imageSize.height },
+            canonical: { w: realW, h: realH },
+          });
+        }
       }
 
       // Step 2: Crop using normalized coords on REAL post-rotation dimensions
       if (hasCropped) {
         const n = cropNormRef.current;
-        const isFullImage =
-          n.l < 0.01 && n.t < 0.01 && n.r > 0.99 && n.b > 0.99;
+        const isFullImage = n.l <= 0 && n.t <= 0 && n.r >= 1 && n.b >= 1;
+
+        console.log("[ImageEditor] Save debug:", {
+          realW,
+          realH,
+          norm: {
+            l: n.l.toFixed(4),
+            t: n.t.toFixed(4),
+            r: n.r.toFixed(4),
+            b: n.b.toFixed(4),
+          },
+          isFullImage,
+        });
 
         if (!isFullImage) {
           let originX = Math.round(n.l * realW);
@@ -1021,11 +1064,11 @@ export default function ImageEditorScreen() {
           cropW = Math.min(cropW, realW - originX);
           cropH = Math.min(cropH, realH - originY);
 
-          console.log("[ImageEditor] Save debug:", {
-            realW,
-            realH,
-            norm: n,
-            crop: { originX, originY, cropW, cropH },
+          console.log("[ImageEditor] Crop rect:", {
+            originX,
+            originY,
+            cropW,
+            cropH,
           });
 
           if (cropW > 10 && cropH > 10) {
@@ -1037,10 +1080,8 @@ export default function ImageEditorScreen() {
             currentUri = step2.uri;
           }
         }
-      }
-
-      // If only rot/flip (no crop), re-compress to final quality
-      if (currentUri !== imageUri && !hasCropped) {
+      } else if (needsProcessing) {
+        // Only rot/flip, re-compress to final quality
         const final = await ImageManipulator.manipulateAsync(currentUri, [], {
           compress: 0.8,
           format: ImageManipulator.SaveFormat.JPEG,
@@ -1110,7 +1151,7 @@ export default function ImageEditorScreen() {
       ? "Drag corners to resize · Drag inside to move crop"
       : mode === "rotate"
         ? "Slide to rotate · Tap 0° to reset"
-        : "Pinch to zoom · Pan to move";
+        : "Pinch to zoom · Pan to move · Double-tap to reset";
 
   return (
     <View style={styles.container}>
@@ -1178,7 +1219,7 @@ export default function ImageEditorScreen() {
                             borderColor: dashedOutlineColor,
                             borderStyle: "dashed",
                           },
-                          cropBorderStyle,
+                          cropOutlineStyle,
                         ]
                       : imageOutlineStyle
                   }
