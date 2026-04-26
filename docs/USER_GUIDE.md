@@ -22,6 +22,7 @@ When you first open the app, you'll see an empty wardrobe with an "Add Item" but
 ### Home Screen
 
 The home screen displays:
+
 - **Add Item** button - Add new clothing items
 - **Clear All** button - Remove all items (with confirmation)
 - **Search bar** - Search your wardrobe
@@ -32,7 +33,7 @@ The home screen displays:
 ## Adding Items
 
 1. Tap **Add Item** on the home screen
-2. Fill in the required fields (marked with red asterisk *):
+2. Fill in the required fields (marked with red asterisk \*):
    - **Name** - Item name (e.g., "Blue Denim Jacket")
    - **Description** - Brief description
    - **Category** - Category (e.g., "Tops", "Bottoms", "Shoes")
@@ -57,6 +58,7 @@ Metadata lets you store custom information about each item:
 4. Repeat for additional metadata
 
 Common metadata examples:
+
 - Brand: Nike
 - Size: M / L / 32x30
 - Color: Navy Blue
@@ -88,6 +90,7 @@ To add multiple items quickly:
 ### Item List
 
 The home screen shows all items with:
+
 - Thumbnail image (or placeholder icon)
 - Item name
 - Category
@@ -98,6 +101,7 @@ Tap any item to view details.
 ### Item Details
 
 The detail view shows:
+
 - **Image carousel** - Swipe to see all photos, tap to view full-screen
 - **Name, Category, Description**
 - **Metadata** - All custom key-value pairs
@@ -133,6 +137,7 @@ If you try to navigate away (back button or gesture) while you have unsaved chan
 - **Discard** - Lose your changes and navigate away
 
 This warning appears when:
+
 - **Adding items** - Any field has content (name, description, category, images, tags, or metadata)
 - **Editing items** - Any field differs from the original saved values
 
@@ -173,6 +178,7 @@ This warning appears when:
 ### Search Suggestions
 
 As you type, suggestions appear showing:
+
 - Matching item names (tap to go directly to item)
 - Matching categories
 - Matching tags
@@ -187,6 +193,7 @@ Access settings by tapping the ⚙️ gear icon on the home screen.
 ### Appearance
 
 Choose your preferred theme:
+
 - **System** - Follow device settings (default)
 - **Light** - Always light mode
 - **Dark** - Always dark mode
@@ -194,6 +201,7 @@ Choose your preferred theme:
 ### App Info
 
 Displays:
+
 - Schema version
 - Total items count
 - Categories count
@@ -202,6 +210,7 @@ Displays:
 ### Database Stats
 
 Tap **Refresh Stats** to see:
+
 - Total items (including deleted)
 - Total tags
 - Total images
@@ -210,18 +219,23 @@ Tap **Refresh Stats** to see:
 ### Maintenance
 
 #### Validate Integrity
+
 Checks database for:
+
 - Data corruption
 - Foreign key violations
 - Orphaned records
 
 #### Cleanup Orphaned Images
+
 Deletes image files that are no longer referenced by any item.
 
 #### Cleanup Orphaned Records
+
 Removes database records that have lost their parent references.
 
 #### Vacuum Database
+
 - Permanently deletes soft-deleted items
 - Removes associated files
 - Reclaims storage space
@@ -230,6 +244,7 @@ Removes database records that have lost their parent references.
 ### Data Export
 
 Tap **Export Data (JSON)** to:
+
 - Export all wardrobe data as JSON
 - Share via email, messages, or save to files
 
@@ -253,6 +268,7 @@ For testing search and filtering capabilities, you can load sample wardrobe item
 ### What's Included
 
 32 sample items across 6 categories:
+
 - **Tops** - T-shirts, polos, shirts, hoodies, sweaters
 - **Bottoms** - Jeans, chinos, shorts, skirts
 - **Dresses** - Various dress styles
@@ -261,6 +277,7 @@ For testing search and filtering capabilities, you can load sample wardrobe item
 - **Accessories** - Bags, belts, watches, sunglasses
 
 Each item includes:
+
 - Realistic name and description
 - Category
 - Metadata (brand, color, size, material, price)

@@ -28,13 +28,7 @@ interface Props {
   onDismiss?: () => void;
 }
 
-export default function CustomDialog({
-  visible,
-  title,
-  message,
-  buttons,
-  onDismiss,
-}: Props) {
+export default function CustomDialog({ visible, title, message, buttons, onDismiss }: Props) {
   const { colors, isDark } = useTheme();
   const [modalVisible, setModalVisible] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -71,7 +65,7 @@ export default function CustomDialog({
         setModalVisible(false);
       });
     }
-  }, [visible]);
+  }, [visible, fadeAnim, scaleAnim, modalVisible]);
 
   const getButtonTextColor = (style?: 'default' | 'cancel' | 'destructive') => {
     if (style === 'destructive') return '#FF3B30';
@@ -80,26 +74,21 @@ export default function CustomDialog({
   };
 
   return (
-    <Modal
-      visible={modalVisible}
-      transparent
-      animationType="none"
-      onRequestClose={onDismiss}
-    >
+    <Modal visible={modalVisible} transparent animationType="none" onRequestClose={onDismiss}>
       <TouchableWithoutFeedback onPress={onDismiss}>
         <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
           <TouchableWithoutFeedback>
-            <Animated.View style={[
-              styles.dialog,
-              { backgroundColor: isDark ? '#2C2C2E' : '#fff' },
-              { transform: [{ scale: scaleAnim }] },
-            ]}>
+            <Animated.View
+              style={[
+                styles.dialog,
+                { backgroundColor: isDark ? '#2C2C2E' : '#fff' },
+                { transform: [{ scale: scaleAnim }] },
+              ]}
+            >
               <View style={styles.content}>
                 <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
                 {message && (
-                  <Text style={[styles.message, { color: colors.textSecondary }]}>
-                    {message}
-                  </Text>
+                  <Text style={[styles.message, { color: colors.textSecondary }]}>{message}</Text>
                 )}
               </View>
               <View style={[styles.buttonContainer, { borderTopColor: colors.border }]}>
@@ -108,7 +97,10 @@ export default function CustomDialog({
                     key={index}
                     style={[
                       styles.button,
-                      index < buttons.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+                      index < buttons.length - 1 && {
+                        borderBottomWidth: StyleSheet.hairlineWidth,
+                        borderBottomColor: colors.border,
+                      },
                     ]}
                     onPress={button.onPress}
                   >

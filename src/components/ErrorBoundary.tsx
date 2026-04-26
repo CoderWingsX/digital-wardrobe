@@ -47,7 +47,7 @@ export default class ErrorBoundary extends Component<Props, State> {
             <Text style={styles.message}>
               The app encountered an unexpected error. Please try again.
             </Text>
-            
+
             <TouchableOpacity style={styles.button} onPress={this.handleRetry}>
               <Text style={styles.buttonText}>Try Again</Text>
             </TouchableOpacity>
@@ -57,9 +57,7 @@ export default class ErrorBoundary extends Component<Props, State> {
                 <Text style={styles.errorTitle}>Error Details (Dev Only):</Text>
                 <Text style={styles.errorText}>{this.state.error.toString()}</Text>
                 {this.state.errorInfo && (
-                  <Text style={styles.errorText}>
-                    {this.state.errorInfo.componentStack}
-                  </Text>
+                  <Text style={styles.errorText}>{this.state.errorInfo.componentStack}</Text>
                 )}
               </ScrollView>
             )}

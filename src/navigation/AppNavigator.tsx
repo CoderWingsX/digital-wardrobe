@@ -19,27 +19,29 @@ const Stack = createStackNavigator<RootStackParamList>();
 export default function AppNavigator() {
   const { isDark, colors } = useTheme();
 
-  const navigationTheme = isDark ? {
-    ...DarkTheme,
-    colors: {
-      ...DarkTheme.colors,
-      background: colors.background,
-      card: colors.headerBackground,
-      text: colors.text,
-      border: colors.border,
-      primary: colors.primary,
-    },
-  } : {
-    ...DefaultTheme,
-    colors: {
-      ...DefaultTheme.colors,
-      background: colors.background,
-      card: colors.headerBackground,
-      text: colors.text,
-      border: colors.border,
-      primary: colors.primary,
-    },
-  };
+  const navigationTheme = isDark
+    ? {
+        ...DarkTheme,
+        colors: {
+          ...DarkTheme.colors,
+          background: colors.background,
+          card: colors.headerBackground,
+          text: colors.text,
+          border: colors.border,
+          primary: colors.primary,
+        },
+      }
+    : {
+        ...DefaultTheme,
+        colors: {
+          ...DefaultTheme.colors,
+          background: colors.background,
+          card: colors.headerBackground,
+          text: colors.text,
+          border: colors.border,
+          primary: colors.primary,
+        },
+      };
 
   return (
     <NavigationContainer theme={navigationTheme}>
@@ -59,26 +61,14 @@ export default function AppNavigator() {
           headerBackTitle: 'Back',
         }}
       >
-        <Stack.Screen
-          name="Tabs"
-          component={TabNavigator}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="Home"
-          component={HomeScreen}
-          options={{ title: 'Home' }}
-        />
+        <Stack.Screen name="Tabs" component={TabNavigator} options={{ headerShown: false }} />
+        <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Home' }} />
         <Stack.Screen
           name="WardrobeView"
           component={WardrobeScreen}
           options={{ title: 'Wardrobe' }}
         />
-        <Stack.Screen
-          name="Settings"
-          component={SettingsScreen}
-          options={{ title: 'Settings' }}
-        />
+        <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
         <Stack.Screen
           name="AddItem"
           component={AddItemScreen}

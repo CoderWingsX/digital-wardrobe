@@ -1,6 +1,6 @@
 // src/screens/ItemDetailsScreen/index.tsx
 
-import React, { useEffect, useState, useRef, useMemo, useLayoutEffect } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,14 +12,12 @@ import {
   Modal,
   Dimensions,
   FlatList,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { RootStackParamList, WardrobeItem } from '../../types';
+import { RootStackParamList } from '../../types';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { Ionicons } from '@expo/vector-icons';
+
 import { useDatabase } from '../../contexts/DatabaseContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { getLocalImageUri } from '../../lib/filesystem';
@@ -39,7 +37,7 @@ export default function ItemDetailsScreen() {
 
   const { items, deleteItemOptimistic } = useDatabase();
 
-  const item = useMemo(() => items.find(i => i.id === itemId), [items, itemId]);
+  const item = useMemo(() => items.find((i) => i.id === itemId), [items, itemId]);
 
   const [fullScreenImageIndex, setFullScreenImageIndex] = useState<number | null>(null);
   const [activeCarouselIndex, setActiveCarouselIndex] = useState(0);
@@ -115,10 +113,7 @@ export default function ItemDetailsScreen() {
                     onPress={() => setFullScreenImageIndex(idx)}
                     activeOpacity={0.8}
                   >
-                    <Image
-                      source={{ uri: getLocalImageUri(uri) }}
-                      style={styles.carouselImage}
-                    />
+                    <Image source={{ uri: getLocalImageUri(uri) }} style={styles.carouselImage} />
                   </TouchableOpacity>
                 </View>
               )}
@@ -143,9 +138,7 @@ export default function ItemDetailsScreen() {
         {/* Info */}
         <Text style={styles.title}>{item.name}</Text>
         <Text style={styles.category}>{item.category}</Text>
-        {item.description ? (
-          <Text style={styles.description}>{item.description}</Text>
-        ) : null}
+        {item.description ? <Text style={styles.description}>{item.description}</Text> : null}
 
         {/* Metadata */}
         <Text style={styles.sectionTitle}>Metadata</Text>
@@ -197,7 +190,7 @@ export default function ItemDetailsScreen() {
           onRequestClose={() => setFullScreenImageIndex(null)}
         >
           <ImageViewer
-            imageUrls={item.images.map(uri => ({
+            imageUrls={item.images.map((uri) => ({
               url: getLocalImageUri(uri),
             }))}
             index={fullScreenImageIndex ?? 0}

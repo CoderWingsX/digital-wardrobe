@@ -1,12 +1,6 @@
 // src/contexts/DatabaseContext.tsx
 
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  ReactNode,
-} from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { initDatabase, getMigrationResult, getSchemaVersion } from '../database';
 import { WardrobeItem, NewItemData, UpdateItemData } from '../types';
 import {
@@ -65,11 +59,11 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
       try {
         dbLog('Initializing database...');
         setInitializing(true);
-        
+
         await initDatabase();
-        
+
         if (!mounted) return;
-        
+
         const migResult = getMigrationResult();
         if (migResult) {
           setMigrationInfo(migResult);
@@ -77,14 +71,14 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
             dbLog(`Migrations completed: v${migResult.fromVersion} -> v${migResult.toVersion}`);
           }
         }
-        
+
         setDbReady(true);
         setDbInitError(null);
-        
+
         await refresh();
         await refreshCategories();
         await refreshTags();
-        
+
         dbLog('Database is ready.');
       } catch (e) {
         dbError('Error initializing database:', e);
@@ -114,7 +108,7 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
       mounted = false;
       try {
         if (typeof unsub === 'function') unsub();
-      } catch { }
+      } catch {}
     };
   }, []);
 
@@ -148,9 +142,7 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const addItemOptimistic = async (
-    data: NewItemData
-  ): Promise<WardrobeItem> => {
+  const addItemOptimistic = async (data: NewItemData): Promise<WardrobeItem> => {
     const tempId = Date.now() * -1; // negative temp id
     const now = Date.now();
     const tempItem: WardrobeItem = {
@@ -174,9 +166,7 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
       const canonicalItem = await dbAddItem(data);
 
       // 3. Reconcile state: replace temp item with canonical one
-      setItems((currentItems) =>
-        currentItems.map((it) => (it.id === tempId ? canonicalItem : it))
-      );
+      setItems((currentItems) => currentItems.map((it) => (it.id === tempId ? canonicalItem : it)));
       uiLog('addItemOptimistic success', { tempId, id: canonicalItem.id });
       return canonicalItem;
     } catch (err) {
@@ -187,10 +177,7 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const updateItemOptimistic = async (
-    id: number,
-    data: UpdateItemData
-  ): Promise<WardrobeItem> => {
+  const updateItemOptimistic = async (id: number, data: UpdateItemData): Promise<WardrobeItem> => {
     const prevItems = items; // Store full previous state for rollback
     const prevItem = prevItems.find((i) => i.id === id);
     if (!prevItem) throw new Error(`Item ${id} not found`);
@@ -210,9 +197,7 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
       const canonicalItem = await dbUpdateItem(id, data);
 
       // 3. Reconcile state: replace local item with canonical one
-      setItems((currentItems) =>
-        currentItems.map((it) => (it.id === id ? canonicalItem : it))
-      );
+      setItems((currentItems) => currentItems.map((it) => (it.id === id ? canonicalItem : it)));
       uiLog('updateItemOptimistic success', { id });
       return canonicalItem;
     } catch (err) {

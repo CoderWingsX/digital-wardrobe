@@ -12,9 +12,21 @@ function parseItemRow(r: any): WardrobeItem {
     ...r,
     metadata: r.metadata ? JSON.parse(r.metadata) : {},
     tags: r.tags
-      ? Array.from(new Set(r.tags.split(',').map((t: string) => t.trim()).filter((t: string) => t.length > 0)))
+      ? Array.from(
+          new Set(
+            r.tags
+              .split(',')
+              .map((t: string) => t.trim())
+              .filter((t: string) => t.length > 0),
+          ),
+        )
       : [],
-    images: r.images ? r.images.split(',').map((i: string) => i.trim()).filter((i: string) => i.length > 0) : [],
+    images: r.images
+      ? r.images
+          .split(',')
+          .map((i: string) => i.trim())
+          .filter((i: string) => i.length > 0)
+      : [],
   };
 }
 
@@ -23,10 +35,7 @@ function parseItemRow(r: any): WardrobeItem {
  */
 export async function loadItem(id: number): Promise<WardrobeItem | null> {
   const database = await getDB();
-  const row = await database.getFirstAsync(
-    `SELECT * FROM items_full WHERE id = ?`,
-    [id]
-  );
+  const row = await database.getFirstAsync(`SELECT * FROM items_full WHERE id = ?`, [id]);
 
   if (!row) return null;
   return parseItemRow(row);
@@ -62,7 +71,7 @@ export async function addItem(data: NewItemData): Promise<WardrobeItem> {
       const result = await database.runAsync(
         `INSERT INTO items (name, description, category, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?)`,
-        [data.name, data.description, data.category, now, now]
+        [data.name, data.description, data.category, now, now],
       );
       itemId = result.lastInsertRowId;
 
@@ -72,7 +81,7 @@ export async function addItem(data: NewItemData): Promise<WardrobeItem> {
         await database.runAsync(
           `INSERT INTO metadata (item_id, attributes, created_at, updated_at)
            VALUES (?, ?, ?, ?)`,
-          [itemId, metaJSON, now, now]
+          [itemId, metaJSON, now, now],
         );
       }
 
@@ -88,7 +97,7 @@ export async function addItem(data: NewItemData): Promise<WardrobeItem> {
 
           const existingRows = (await database.getAllAsync(
             `SELECT id FROM tags WHERE name = ? COLLATE NOCASE AND deleted = 0`,
-            [tag]
+            [tag],
           )) as { id: number }[];
 
           let tagId: number;
@@ -98,7 +107,7 @@ export async function addItem(data: NewItemData): Promise<WardrobeItem> {
             const tagRes = await database.runAsync(
               `INSERT INTO tags (name, created_at, updated_at)
                VALUES (?, ?, ?)`,
-              [tag, now, now]
+              [tag, now, now],
             );
             tagId = tagRes.lastInsertRowId;
           }
@@ -106,7 +115,7 @@ export async function addItem(data: NewItemData): Promise<WardrobeItem> {
           await database.runAsync(
             `INSERT OR IGNORE INTO item_tags (item_id, tag_id, created_at, updated_at)
              VALUES (?, ?, ?, ?)`,
-            [itemId, tagId, now, now]
+            [itemId, tagId, now, now],
           );
         }
       }
@@ -118,7 +127,7 @@ export async function addItem(data: NewItemData): Promise<WardrobeItem> {
           await database.runAsync(
             `INSERT INTO item_images (item_id, local_uri, is_primary, created_at, updated_at)
              VALUES (?, ?, ?, ?, ?)`,
-            [itemId, uri, i === 0 ? 1 : 0, now, now]
+            [itemId, uri, i === 0 ? 1 : 0, now, now],
           );
         }
       }
@@ -153,7 +162,7 @@ export async function clearAll() {
     dbLog('All tables cleared.');
     try {
       dbEvents.emit('itemsChanged', { type: 'clearAll' });
-    } catch { }
+    } catch {}
   } catch (err) {
     dbError('[db] Error clearing DB:', err);
     throw err;
@@ -170,24 +179,24 @@ export async function deleteItem(itemId: number): Promise<number> {
 
   try {
     await database.withTransactionAsync(async () => {
-      await database.runAsync(
-        `UPDATE items SET deleted = 1, updated_at = ? WHERE id = ?`,
-        [now, itemId]
-      );
-      await database.runAsync(
-        `UPDATE metadata SET deleted = 1, updated_at = ? WHERE item_id = ?`,
-        [now, itemId]
-      );
+      await database.runAsync(`UPDATE items SET deleted = 1, updated_at = ? WHERE id = ?`, [
+        now,
+        itemId,
+      ]);
+      await database.runAsync(`UPDATE metadata SET deleted = 1, updated_at = ? WHERE item_id = ?`, [
+        now,
+        itemId,
+      ]);
       await database.runAsync(
         `UPDATE item_tags SET deleted = 1, updated_at = ? WHERE item_id = ?`,
-        [now, itemId]
+        [now, itemId],
       );
       await database.runAsync(
         `UPDATE item_images SET deleted = 1, updated_at = ? WHERE item_id = ?`,
-        [now, itemId]
+        [now, itemId],
       );
     });
-    
+
     dbLog('deleteItem: marked deleted', { itemId });
     dbEvents.emit('itemsChanged', { type: 'delete', id: itemId });
     return itemId;
@@ -200,10 +209,7 @@ export async function deleteItem(itemId: number): Promise<number> {
 /**
  * Updates an item and returns the updated canonical item.
  */
-export async function updateItem(
-  itemId: number,
-  data: UpdateItemData
-): Promise<WardrobeItem> {
+export async function updateItem(itemId: number, data: UpdateItemData): Promise<WardrobeItem> {
   const database = await getDB();
   const now = Date.now();
 
@@ -212,26 +218,26 @@ export async function updateItem(
       // 1. Update main item
       await database.runAsync(
         `UPDATE items SET name = ?, description = ?, category = ?, updated_at = ? WHERE id = ?`,
-        [data.name, data.description, data.category, now, itemId]
+        [data.name, data.description, data.category, now, itemId],
       );
 
       // 2. Update metadata (Upsert logic)
       const metadataStr = JSON.stringify(data.metadata);
       const existingMeta = (await database.getAllAsync(
         `SELECT id FROM metadata WHERE item_id = ?`,
-        [itemId]
+        [itemId],
       )) as { id: number }[];
 
       if (existingMeta.length > 0) {
         await database.runAsync(
           `UPDATE metadata SET attributes = ?, updated_at = ?, deleted = 0 WHERE id = ?`,
-          [metadataStr, now, existingMeta[0].id]
+          [metadataStr, now, existingMeta[0].id],
         );
       } else {
         await database.runAsync(
           `INSERT INTO metadata (item_id, attributes, created_at, updated_at)
            VALUES (?, ?, ?, ?)`,
-          [itemId, metadataStr, now, now]
+          [itemId, metadataStr, now, now],
         );
       }
 
@@ -239,10 +245,8 @@ export async function updateItem(
       const incomingTags = Array.isArray(data.tags)
         ? Array.from(
             new Set(
-              data.tags
-                .map((t: string) => (t || '').trim())
-                .filter((t: string) => t.length > 0)
-            )
+              data.tags.map((t: string) => (t || '').trim()).filter((t: string) => t.length > 0),
+            ),
           )
         : [];
 
@@ -251,7 +255,7 @@ export async function updateItem(
          FROM item_tags it
          JOIN tags t ON t.id = it.tag_id
          WHERE it.item_id = ? AND it.deleted = 0`,
-        [itemId]
+        [itemId],
       )) as { id: number; tag_id: number; tag_name: string }[];
 
       const incomingLowerSet = new Set(incomingTags.map((t: string) => t.toLowerCase()));
@@ -261,7 +265,7 @@ export async function updateItem(
         // Find or create tag
         const existingTags = (await database.getAllAsync(
           `SELECT id FROM tags WHERE name = ? COLLATE NOCASE AND deleted = 0`,
-          [tag]
+          [tag],
         )) as { id: number }[];
 
         let tagId: number;
@@ -270,7 +274,7 @@ export async function updateItem(
         } else {
           const tagRes = await database.runAsync(
             `INSERT INTO tags (name, created_at, updated_at) VALUES (?, ?, ?)`,
-            [tag, now, now]
+            [tag, now, now],
           );
           tagId = tagRes.lastInsertRowId;
         }
@@ -280,7 +284,7 @@ export async function updateItem(
           await database.runAsync(
             `INSERT OR IGNORE INTO item_tags (item_id, tag_id, created_at, updated_at)
              VALUES (?, ?, ?, ?)`,
-            [itemId, tagId, now, now]
+            [itemId, tagId, now, now],
           );
         }
       }
@@ -293,7 +297,7 @@ export async function updateItem(
       if (removedTagLinkIds.length > 0) {
         await database.runAsync(
           `UPDATE item_tags SET deleted = 1, updated_at = ? WHERE id IN (${removedTagLinkIds.join(',')})`,
-          [now]
+          [now],
         );
       }
 
@@ -305,7 +309,7 @@ export async function updateItem(
 
       const existingImageRows = (await database.getAllAsync(
         `SELECT id, local_uri FROM item_images WHERE item_id = ? AND deleted = 0`,
-        [itemId]
+        [itemId],
       )) as { id: number; local_uri: string }[];
 
       // Add new images
@@ -315,7 +319,7 @@ export async function updateItem(
           await database.runAsync(
             `INSERT INTO item_images (item_id, local_uri, created_at, updated_at)
              VALUES (?, ?, ?, ?)`,
-            [itemId, uri, now, now]
+            [itemId, uri, now, now],
           );
         }
       }
@@ -328,7 +332,7 @@ export async function updateItem(
       if (removedImageIds.length > 0) {
         await database.runAsync(
           `UPDATE item_images SET deleted = 1, updated_at = ? WHERE id IN (${removedImageIds.join(',')})`,
-          [now]
+          [now],
         );
       }
     });

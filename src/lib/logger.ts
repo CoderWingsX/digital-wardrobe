@@ -3,11 +3,7 @@ const PREFIX_DB = '[db]';
 const PREFIX_UI = '[ui]';
 
 export const dbLog = (...args: any[]) => {
-  if (
-    typeof __DEV__ !== 'undefined'
-      ? __DEV__
-      : process.env.NODE_ENV !== 'production'
-  ) {
+  if (typeof __DEV__ !== 'undefined' ? __DEV__ : process.env.NODE_ENV !== 'production') {
     console.log(PREFIX_DB, ...args);
   }
 };
@@ -25,11 +21,7 @@ export const dbError = (...args: any[]) => {
 };
 
 export const uiLog = (...args: any[]) => {
-  if (
-    typeof __DEV__ !== 'undefined'
-      ? __DEV__
-      : process.env.NODE_ENV !== 'production'
-  ) {
+  if (typeof __DEV__ !== 'undefined' ? __DEV__ : process.env.NODE_ENV !== 'production') {
     console.log(PREFIX_UI, ...args);
   }
 };

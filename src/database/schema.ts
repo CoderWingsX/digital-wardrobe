@@ -3,7 +3,7 @@
 /**
  * Clean offline-first schema for the digital wardrobe app.
  * This file is kept for reference - actual schema is managed by migrations.ts
- * 
+ *
  * Schema version: 1
  */
 

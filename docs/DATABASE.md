@@ -37,13 +37,13 @@ Location: `wardrobe.db` in app's document directory
 
 ### Tables Overview
 
-| Table | Purpose |
-|-------|---------|
-| `items` | Main wardrobe items |
-| `metadata` | Custom key-value data per item |
-| `item_images` | Image file references |
-| `tags` | Tag definitions |
-| `item_tags` | Many-to-many item-tag links |
+| Table         | Purpose                        |
+| ------------- | ------------------------------ |
+| `items`       | Main wardrobe items            |
+| `metadata`    | Custom key-value data per item |
+| `item_images` | Image file references          |
+| `tags`        | Tag definitions                |
+| `item_tags`   | Many-to-many item-tag links    |
 
 ---
 
@@ -51,15 +51,15 @@ Location: `wardrobe.db` in app's document directory
 
 Main table for wardrobe items.
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Unique identifier |
-| `name` | TEXT | NOT NULL | Item name |
-| `description` | TEXT | | Item description |
-| `category` | TEXT | | Category (e.g., "Tops") |
-| `created_at` | INTEGER | NOT NULL | Unix timestamp (ms) |
-| `updated_at` | INTEGER | NOT NULL | Unix timestamp (ms) |
-| `deleted` | INTEGER | DEFAULT 0 | Soft delete flag (0/1) |
+| Column        | Type    | Constraints               | Description             |
+| ------------- | ------- | ------------------------- | ----------------------- |
+| `id`          | INTEGER | PRIMARY KEY AUTOINCREMENT | Unique identifier       |
+| `name`        | TEXT    | NOT NULL                  | Item name               |
+| `description` | TEXT    |                           | Item description        |
+| `category`    | TEXT    |                           | Category (e.g., "Tops") |
+| `created_at`  | INTEGER | NOT NULL                  | Unix timestamp (ms)     |
+| `updated_at`  | INTEGER | NOT NULL                  | Unix timestamp (ms)     |
+| `deleted`     | INTEGER | DEFAULT 0                 | Soft delete flag (0/1)  |
 
 ```sql
 CREATE TABLE items (
@@ -79,14 +79,14 @@ CREATE TABLE items (
 
 Stores custom key-value metadata as JSON per item.
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Unique identifier |
-| `item_id` | INTEGER | NOT NULL, FK → items(id) | Parent item |
-| `attributes` | TEXT | | JSON object of key-value pairs |
-| `created_at` | INTEGER | NOT NULL | Unix timestamp (ms) |
-| `updated_at` | INTEGER | NOT NULL | Unix timestamp (ms) |
-| `deleted` | INTEGER | DEFAULT 0 | Soft delete flag |
+| Column       | Type    | Constraints               | Description                    |
+| ------------ | ------- | ------------------------- | ------------------------------ |
+| `id`         | INTEGER | PRIMARY KEY AUTOINCREMENT | Unique identifier              |
+| `item_id`    | INTEGER | NOT NULL, FK → items(id)  | Parent item                    |
+| `attributes` | TEXT    |                           | JSON object of key-value pairs |
+| `created_at` | INTEGER | NOT NULL                  | Unix timestamp (ms)            |
+| `updated_at` | INTEGER | NOT NULL                  | Unix timestamp (ms)            |
+| `deleted`    | INTEGER | DEFAULT 0                 | Soft delete flag               |
 
 ```sql
 CREATE TABLE metadata (
@@ -101,6 +101,7 @@ CREATE TABLE metadata (
 ```
 
 **Example attributes JSON:**
+
 ```json
 {
   "brand": "Nike",
@@ -117,15 +118,15 @@ CREATE TABLE metadata (
 
 References to locally stored image files.
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Unique identifier |
-| `item_id` | INTEGER | NOT NULL, FK → items(id) | Parent item |
-| `local_uri` | TEXT | NOT NULL | Filename or path |
-| `is_primary` | INTEGER | DEFAULT 0 | Primary image flag |
-| `created_at` | INTEGER | NOT NULL | Unix timestamp (ms) |
-| `updated_at` | INTEGER | NOT NULL | Unix timestamp (ms) |
-| `deleted` | INTEGER | DEFAULT 0 | Soft delete flag |
+| Column       | Type    | Constraints               | Description         |
+| ------------ | ------- | ------------------------- | ------------------- |
+| `id`         | INTEGER | PRIMARY KEY AUTOINCREMENT | Unique identifier   |
+| `item_id`    | INTEGER | NOT NULL, FK → items(id)  | Parent item         |
+| `local_uri`  | TEXT    | NOT NULL                  | Filename or path    |
+| `is_primary` | INTEGER | DEFAULT 0                 | Primary image flag  |
+| `created_at` | INTEGER | NOT NULL                  | Unix timestamp (ms) |
+| `updated_at` | INTEGER | NOT NULL                  | Unix timestamp (ms) |
+| `deleted`    | INTEGER | DEFAULT 0                 | Soft delete flag    |
 
 ```sql
 CREATE TABLE item_images (
@@ -146,13 +147,13 @@ CREATE TABLE item_images (
 
 Tag definitions (case-insensitive unique names).
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Unique identifier |
-| `name` | TEXT | NOT NULL, UNIQUE COLLATE NOCASE | Tag name |
-| `created_at` | INTEGER | NOT NULL | Unix timestamp (ms) |
-| `updated_at` | INTEGER | NOT NULL | Unix timestamp (ms) |
-| `deleted` | INTEGER | DEFAULT 0 | Soft delete flag |
+| Column       | Type    | Constraints                     | Description         |
+| ------------ | ------- | ------------------------------- | ------------------- |
+| `id`         | INTEGER | PRIMARY KEY AUTOINCREMENT       | Unique identifier   |
+| `name`       | TEXT    | NOT NULL, UNIQUE COLLATE NOCASE | Tag name            |
+| `created_at` | INTEGER | NOT NULL                        | Unix timestamp (ms) |
+| `updated_at` | INTEGER | NOT NULL                        | Unix timestamp (ms) |
+| `deleted`    | INTEGER | DEFAULT 0                       | Soft delete flag    |
 
 ```sql
 CREATE TABLE tags (
@@ -170,14 +171,14 @@ CREATE TABLE tags (
 
 Many-to-many relationship between items and tags.
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Unique identifier |
-| `item_id` | INTEGER | NOT NULL, FK → items(id) | Item reference |
-| `tag_id` | INTEGER | NOT NULL, FK → tags(id) | Tag reference |
-| `created_at` | INTEGER | NOT NULL | Unix timestamp (ms) |
-| `updated_at` | INTEGER | NOT NULL | Unix timestamp (ms) |
-| `deleted` | INTEGER | DEFAULT 0 | Soft delete flag |
+| Column       | Type    | Constraints               | Description         |
+| ------------ | ------- | ------------------------- | ------------------- |
+| `id`         | INTEGER | PRIMARY KEY AUTOINCREMENT | Unique identifier   |
+| `item_id`    | INTEGER | NOT NULL, FK → items(id)  | Item reference      |
+| `tag_id`     | INTEGER | NOT NULL, FK → tags(id)   | Tag reference       |
+| `created_at` | INTEGER | NOT NULL                  | Unix timestamp (ms) |
+| `updated_at` | INTEGER | NOT NULL                  | Unix timestamp (ms) |
+| `deleted`    | INTEGER | DEFAULT 0                 | Soft delete flag    |
 
 ```sql
 CREATE TABLE item_tags (
@@ -220,12 +221,12 @@ Aggregated view joining items with all related data.
 
 ```sql
 CREATE VIEW items_full AS
-SELECT 
-  i.id, 
-  i.name, 
-  i.category, 
-  i.description, 
-  i.created_at, 
+SELECT
+  i.id,
+  i.name,
+  i.category,
+  i.description,
+  i.created_at,
   i.updated_at,
   m.attributes AS metadata,
   GROUP_CONCAT(DISTINCT t.name) AS tags,
@@ -241,6 +242,7 @@ ORDER BY i.updated_at DESC;
 ```
 
 **Output columns:**
+
 - `id`, `name`, `category`, `description`, `created_at`, `updated_at`
 - `metadata` - JSON string
 - `tags` - Comma-separated tag names
@@ -301,15 +303,15 @@ async function createFreshSchema(db: SQLite.SQLiteDatabase) {
 
 ### Data Preservation Rules
 
-| Change Type | Auto-Preserved? | Action Required |
-|-------------|-----------------|-----------------|
-| Add column | ✅ Yes | Just ALTER TABLE |
-| Add index | ✅ Yes | Just CREATE INDEX |
-| Add view | ✅ Yes | Just CREATE VIEW |
-| Rename column | ❌ No | Manual copy |
-| Change type | ❌ No | Manual copy |
-| Delete column | ❌ No | Manual copy |
-| Restructure | ❌ No | Manual copy |
+| Change Type   | Auto-Preserved? | Action Required   |
+| ------------- | --------------- | ----------------- |
+| Add column    | ✅ Yes          | Just ALTER TABLE  |
+| Add index     | ✅ Yes          | Just CREATE INDEX |
+| Add view      | ✅ Yes          | Just CREATE VIEW  |
+| Rename column | ❌ No           | Manual copy       |
+| Change type   | ❌ No           | Manual copy       |
+| Delete column | ❌ No           | Manual copy       |
+| Restructure   | ❌ No           | Manual copy       |
 
 ### Manual Data Copy Example
 
@@ -327,17 +329,17 @@ For complex changes requiring data preservation:
         name TEXT,
         new_column TEXT  -- renamed
       );
-      
+
       -- 2. Copy data
       INSERT INTO items_new (id, name, new_column)
       SELECT id, name, old_column FROM items;
-      
+
       -- 3. Drop old table
       DROP TABLE items;
-      
+
       -- 4. Rename new table
       ALTER TABLE items_new RENAME TO items;
-      
+
       -- 5. Recreate indexes
       CREATE INDEX idx_items_name ON items(name);
     `);

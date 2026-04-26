@@ -6,7 +6,18 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const THEME_STORAGE_KEY = '@theme_preference';
 
-export type ThemeMode = 'light' | 'dark' | 'system' | 'sakura' | 'forest' | 'champagne' | 'nord' | 'sunset' | 'ocean' | 'crimson' | 'slate';
+export type ThemeMode =
+  | 'light'
+  | 'dark'
+  | 'system'
+  | 'sakura'
+  | 'forest'
+  | 'champagne'
+  | 'nord'
+  | 'sunset'
+  | 'ocean'
+  | 'crimson'
+  | 'slate';
 
 export const lightColors = {
   background: '#FFFFFF',
@@ -198,7 +209,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     (async () => {
       try {
-        const saved = await AsyncStorage.getItem(THEME_STORAGE_KEY) as ThemeMode;
+        const saved = (await AsyncStorage.getItem(THEME_STORAGE_KEY)) as ThemeMode;
         if (saved) {
           setModeState(saved);
         }
@@ -219,9 +230,10 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const isDark = mode === 'system'
-    ? systemColorScheme === 'dark'
-    : ['dark', 'sakura', 'forest', 'nord', 'sunset', 'crimson'].includes(mode);
+  const isDark =
+    mode === 'system'
+      ? systemColorScheme === 'dark'
+      : ['dark', 'sakura', 'forest', 'nord', 'sunset', 'crimson'].includes(mode);
 
   const themeMap: Record<ThemeMode, ThemeColors> = {
     light: lightColors,
